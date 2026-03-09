@@ -260,18 +260,18 @@ class TicTacToeView(View):
 
 
 class PlayAgainView(View):
-    """View for play again button"""
+    """View for play again button - persistent across restarts"""
     
     def __init__(self):
-        super().__init__(timeout=3600)
+        super().__init__(timeout=None)  # Persistent - no timeout
     
-    @discord.ui.button(label="Play Again", style=discord.ButtonStyle.primary, emoji="🔄")
+    @discord.ui.button(label="Play Again", style=discord.ButtonStyle.primary, emoji="🔄", custom_id="tictactoe_playagain")
     async def play_again(self, interaction: discord.Interaction, button: Button):
         """Start a new game"""
         try:
             await interaction.response.defer()
             
-            # Disable Play Again button di pesan lama
+            # Disable button di pesan lama
             button.disabled = True
             await interaction.edit_original_response(view=self)
             
@@ -288,7 +288,7 @@ class PlayAgainView(View):
             logger.error(f"Error in play_again: {e}")
             try:
                 await interaction.followup.send(
-                    f"Error starting new game",
+                    "⚠️ Error starting new game. Try using `/tictactoe` command instead.",
                     ephemeral=True
                 )
             except:
