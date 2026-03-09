@@ -1,0 +1,19 @@
+[Unit]
+Description=Discord Announcement Bot
+After=network.target
+
+[Service]
+# Pastikan user j1mb sudah benar
+User=j1mb
+Group=j1mb
+WorkingDirectory=/home/j1mb/discord-announcer
+ExecStart=/home/j1mb/discord-announcer/venv/bin/python /home/j1mb/discord-announcer/bot.py
+Restart=always
+RestartSec=5
+# Opsional: logging output
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=discord-bot
+
+[Install]
+WantedBy=multi-user.target
