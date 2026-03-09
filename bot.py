@@ -61,9 +61,8 @@ class AnnouncerBot(commands.Bot):
                 if custom_msg_cog:
                     custom_message = custom_msg_cog.get_custom_message(message.guild.id, content_after_prefix)
                     if custom_message:
-                        # Send custom message as embed
+                        # Send custom message as embed (no title, just description)
                         embed = discord.Embed(
-                            title="Custom Message",
                             description=custom_message,
                             color=discord.Color.blue()
                         )
