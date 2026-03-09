@@ -36,8 +36,8 @@ wheels/
 *~
 .DS_Store
 
-# Data files (local development)
-data/*.json
+# Data files (local development) - ignore all data directories and files
+data/
 *.log
 
 # OS
