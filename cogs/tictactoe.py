@@ -173,7 +173,7 @@ class TicTacToeView(View):
         if winner == "X":
             self.game.game_over = True
             self.game.winner = "X"
-            for child in self.children:
+            for child in self.children[:9]:  # Disable only game buttons
                 if isinstance(child, Button):
                     child.disabled = True
             embed = discord.Embed(
@@ -181,11 +181,12 @@ class TicTacToeView(View):
                 description="Congratulations! You got 3 in a row!",
                 color=discord.Color.gold()
             )
-            await interaction.response.edit_message(embed=embed, view=self)
+            play_again_view = PlayAgainView(self.game.player_x, self.game.player_o, self.game.vs_bot)
+            await interaction.response.edit_message(embed=embed, view=play_again_view)
             return
         elif winner == "Draw":
             self.game.game_over = True
-            for child in self.children:
+            for child in self.children[:9]:  # Disable only game buttons
                 if isinstance(child, Button):
                     child.disabled = True
             embed = discord.Embed(
@@ -193,7 +194,8 @@ class TicTacToeView(View):
                 description="No more moves available - everyone had a fair chance!",
                 color=discord.Color.gold()
             )
-            await interaction.response.edit_message(embed=embed, view=self)
+            play_again_view = PlayAgainView(self.game.player_x, self.game.player_o, self.game.vs_bot)
+            await interaction.response.edit_message(embed=embed, view=play_again_view)
             return
         
         # Bot's turn
@@ -206,7 +208,7 @@ class TicTacToeView(View):
                 if winner == "O":
                     self.game.game_over = True
                     self.game.winner = "O"
-                    for child in self.children:
+                    for child in self.children[:9]:  # Disable only game buttons
                         if isinstance(child, Button):
                             child.disabled = True
                     embed = discord.Embed(
@@ -214,11 +216,12 @@ class TicTacToeView(View):
                         description="Bot got 3 in a row! Better luck next time!",
                         color=discord.Color.gold()
                     )
-                    await interaction.response.edit_message(embed=embed, view=self)
+                    play_again_view = PlayAgainView(self.game.player_x, self.game.player_o, self.game.vs_bot)
+                    await interaction.response.edit_message(embed=embed, view=play_again_view)
                     return
                 elif winner == "Draw":
                     self.game.game_over = True
-                    for child in self.children:
+                    for child in self.children[:9]:  # Disable only game buttons
                         if isinstance(child, Button):
                             child.disabled = True
                     embed = discord.Embed(
@@ -226,7 +229,8 @@ class TicTacToeView(View):
                         description="No more moves available - everyone had a fair chance!",
                         color=discord.Color.gold()
                     )
-                    await interaction.response.edit_message(embed=embed, view=self)
+                    play_again_view = PlayAgainView(self.game.player_x, self.game.player_o, self.game.vs_bot)
+                    await interaction.response.edit_message(embed=embed, view=play_again_view)
                     return
             except Exception as e:
                 logger.error(f"Error during bot move: {e}")
@@ -253,6 +257,33 @@ class TicTacToeView(View):
         for child in self.children:
             if isinstance(child, Button):
                 child.disabled = True
+
+
+class PlayAgainView(View):
+    """View for play again button"""
+    
+    def __init__(self, player_x: discord.User, player_o: discord.User, vs_bot: bool):
+        super().__init__(timeout=3600)
+        self.player_x = player_x
+        self.player_o = player_o
+        self.vs_bot = vs_bot
+    
+    @discord.ui.button(label="Play Again", style=discord.ButtonStyle.primary, emoji="🔄")
+    async def play_again(self, interaction: discord.Interaction, button: Button):
+        """Start a new game"""
+        if interaction.user.id != self.player_x.id:
+            await interaction.response.send_message(
+                "Only the original player can start a new game!",
+                ephemeral=True
+            )
+            return
+        
+        # Create new game
+        game = TicTacToeGame(self.player_x, self.player_o, self.vs_bot)
+        view = TicTacToeView(game, self.vs_bot)
+        
+        embed = view.get_game_embed()
+        await interaction.response.edit_message(embed=embed, view=view)
 
 
 class TicTacToeCog(commands.Cog):
