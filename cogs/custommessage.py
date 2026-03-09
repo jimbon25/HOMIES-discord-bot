@@ -248,16 +248,24 @@ class CustomMessageManager(commands.Cog):
     @custommessage_enable.error
     async def custommessage_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         """Error handler"""
-        if isinstance(error, app_commands.MissingPermissions):
-            await interaction.response.send_message(
-                "❌ Only administrators can manage custom messages",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ Error: {str(error)}",
-                ephemeral=True
-            )
+        try:
+            if isinstance(error, app_commands.MissingPermissions):
+                await interaction.response.send_message(
+                    "❌ Only administrators can manage custom messages",
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"❌ Error: {str(error)}",
+                    ephemeral=True
+                )
+        except discord.errors.NotFound:
+            # Interaction expired/invalid, silently ignore
+            pass
+        except Exception as e:
+            # Log other unexpected errors
+            import logging
+            logging.error(f"Error in custommessage_error handler: {e}")
 
 async def setup(bot):
     """Load the cog"""

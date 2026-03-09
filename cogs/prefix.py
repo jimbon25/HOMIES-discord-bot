@@ -137,16 +137,24 @@ class PrefixManager(commands.Cog):
     @prefix_disable.error
     async def prefix_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         """Error handler for prefix commands"""
-        if isinstance(error, app_commands.MissingPermissions):
-            await interaction.response.send_message(
-                "❌ Only administrators can manage prefix settings",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ Error: {str(error)}",
-                ephemeral=True
-            )
+        try:
+            if isinstance(error, app_commands.MissingPermissions):
+                await interaction.response.send_message(
+                    "❌ Only administrators can manage prefix settings",
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"❌ Error: {str(error)}",
+                    ephemeral=True
+                )
+        except discord.errors.NotFound:
+            # Interaction expired/invalid, silently ignore
+            pass
+        except Exception as e:
+            # Log other unexpected errors
+            import logging
+            logging.error(f"Error in prefix_command_error handler: {e}")
 
 async def setup(bot):
     """Load the cog"""
