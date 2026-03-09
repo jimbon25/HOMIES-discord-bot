@@ -33,10 +33,10 @@ class TicTacToeGame:
         symbols = {None: "⬜", "X": "❌", "O": "⭕"}
         board_str = ""
         for i in range(9):
-            board_str += symbols[self.board[i]]
+            board_str += symbols[self.board[i]] + " "
             if (i + 1) % 3 == 0:
                 board_str += "\n"
-        return board_str
+        return board_str.strip()
     
     def check_winner(self) -> str:
         """Check for winner. Returns 'X', 'O', 'Draw', or None"""
@@ -109,11 +109,9 @@ class TicTacToeView(View):
         
         # Create 9 buttons for the board
         for i in range(9):
-            button = Button(label="", custom_id=f"ttt_{i}", style=discord.ButtonStyle.secondary)
+            button = Button(label="⬜", custom_id=f"ttt_{i}", style=discord.ButtonStyle.secondary)
             button.callback = self.make_move
             self.add_item(button)
-        
-        self.update_board_buttons()
     
     def update_board_buttons(self):
         """Update button labels and states"""
@@ -127,8 +125,14 @@ class TicTacToeView(View):
                     child.label = "⭕"
                     child.disabled = True
                 else:
-                    child.label = str(i + 1)
+                    child.label = "⬜"
                     child.disabled = False
+                
+                # Set button style based on state
+                if symbol is None:
+                    child.style = discord.ButtonStyle.secondary
+                else:
+                    child.style = discord.ButtonStyle.success
     
     async def make_move(self, interaction: discord.Interaction):
         """Handle button click"""
@@ -143,38 +147,80 @@ class TicTacToeView(View):
         
         if not self.game.make_move(position, "X"):
             await interaction.response.send_message(
-                "Invalid move!",
+                "That square is already taken!",
                 ephemeral=True
             )
             return
+        
+        # Update buttons immediately
+        self.update_board_buttons()
         
         winner = self.game.check_winner()
         
         if winner == "X":
             self.game.game_over = True
             self.game.winner = "X"
-            await self.end_game(interaction, f"🎉 **{self.game.player_x.name} wins!**")
+            for child in self.children:
+                if isinstance(child, Button):
+                    child.disabled = True
+            embed = discord.Embed(
+                title="Game Over!",
+                description=self.game.get_board_display(),
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="Result", value=f"🎉 **{self.game.player_x.name} wins!**", inline=False)
+            await interaction.response.edit_message(embed=embed, view=self)
             return
         elif winner == "Draw":
             self.game.game_over = True
-            await self.end_game(interaction, "🤝 **It's a draw!**")
+            for child in self.children:
+                if isinstance(child, Button):
+                    child.disabled = True
+            embed = discord.Embed(
+                title="Game Over!",
+                description=self.game.get_board_display(),
+                color=discord.Color.gold()
+            )
+            embed.add_field(name="Result", value="🤝 **It's a draw!**", inline=False)
+            await interaction.response.edit_message(embed=embed, view=self)
             return
         
-        # Bot or player O's turn
+        # Bot's turn
         if self.game.vs_bot:
-            bot_move = self.game.get_bot_move()
-            self.game.make_move(bot_move, "O")
-            
-            winner = self.game.check_winner()
-            if winner == "O":
-                self.game.game_over = True
-                self.game.winner = "O"
-                await self.end_game(interaction, "🤖 **Bot wins!**")
-                return
-            elif winner == "Draw":
-                self.game.game_over = True
-                await self.end_game(interaction, "🤝 **It's a draw!**")
-                return
+            try:
+                bot_move = self.game.get_bot_move()
+                self.game.make_move(bot_move, "O")
+                
+                winner = self.game.check_winner()
+                if winner == "O":
+                    self.game.game_over = True
+                    self.game.winner = "O"
+                    for child in self.children:
+                        if isinstance(child, Button):
+                            child.disabled = True
+                    embed = discord.Embed(
+                        title="Game Over!",
+                        description=self.game.get_board_display(),
+                        color=discord.Color.gold()
+                    )
+                    embed.add_field(name="Result", value="🤖 **Bot wins!**", inline=False)
+                    await interaction.response.edit_message(embed=embed, view=self)
+                    return
+                elif winner == "Draw":
+                    self.game.game_over = True
+                    for child in self.children:
+                        if isinstance(child, Button):
+                            child.disabled = True
+                    embed = discord.Embed(
+                        title="Game Over!",
+                        description=self.game.get_board_display(),
+                        color=discord.Color.gold()
+                    )
+                    embed.add_field(name="Result", value="🤝 **It's a draw!**", inline=False)
+                    await interaction.response.edit_message(embed=embed, view=self)
+                    return
+            except Exception as e:
+                logger.error(f"Error during bot move: {e}")
         else:
             self.game.toggle_player()
         
@@ -184,34 +230,30 @@ class TicTacToeView(View):
     
     def get_game_embed(self) -> discord.Embed:
         """Create game embed"""
-        player_text = "🤖 Bot" if self.game.vs_bot and self.game.current_player == "O" else f"{self.game.player_x.mention if self.game.current_player == 'X' else self.game.player_o.mention}"
+        current_text = "Your turn" if self.game.current_player == "X" else "🤖 Bot's turn"
         
         embed = discord.Embed(
-            title="Tic Tac Toe Game",
+            title="Tic Tac Toe",
             description=self.game.get_board_display(),
             color=discord.Color.blue()
         )
         embed.add_field(
             name="Current Turn",
-            value=f"{player_text} ({self.game.current_player})",
+            value=current_text,
+            inline=False
+        )
+        embed.add_field(
+            name="How to play",
+            value="Click any ⬜ square to place your ❌",
             inline=False
         )
         return embed
     
-    async def end_game(self, interaction: discord.Interaction, result: str):
-        """End game and show result"""
+    async def on_timeout(self):
+        """Called when view times out"""
         for child in self.children:
             if isinstance(child, Button):
                 child.disabled = True
-        
-        embed = discord.Embed(
-            title="Game Over!",
-            description=self.game.get_board_display(),
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Result", value=result, inline=False)
-        
-        await interaction.response.edit_message(embed=embed, view=self)
 
 
 class TicTacToeCog(commands.Cog):
@@ -226,10 +268,22 @@ class TicTacToeCog(commands.Cog):
             vs_bot = opponent is None
             player_o = None if vs_bot else opponent
             
+            if not vs_bot and player_o.id == interaction.user.id:
+                await interaction.response.send_message(
+                    "❌ You can't play against yourself!",
+                    ephemeral=True
+                )
+                return
+            
             game = TicTacToeGame(interaction.user, player_o, vs_bot)
             view = TicTacToeView(game, interaction)
             
             embed = view.get_game_embed()
+            embed.add_field(
+                name="Info",
+                value=f"Playing against: {'🤖 Bot' if vs_bot else player_o.mention}",
+                inline=False
+            )
             
             await interaction.response.send_message(embed=embed, view=view)
         except Exception as e:
