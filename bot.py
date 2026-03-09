@@ -53,6 +53,18 @@ async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('------')
     
+    # Auto-leave dari guild tertentu saat restart (untuk testing/cleanup)
+    autoleave_guild_id = os.getenv('AUTOLEAVE_GUILD_ID')
+    if autoleave_guild_id:
+        try:
+            guild_id = int(autoleave_guild_id)
+            guild = bot.get_guild(guild_id)
+            if guild:
+                await guild.leave()
+                logger.info(f"✅ Bot auto-left guild: {guild.name} (ID: {guild_id})")
+        except Exception as e:
+            logger.error(f"❌ Error auto-leaving guild: {e}")
+    
     # Set status teks di profile bot - Edit text dibawah:
     # Format: Playing, Listening, Watching, Streaming
     await bot.change_presence(
