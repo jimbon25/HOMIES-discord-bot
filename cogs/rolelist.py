@@ -25,7 +25,9 @@ class RoleList(commands.Cog):
         role_list = []
         for role in roles:
             member_count = len(role.members)
-            role_info = f"**{role.name}** | {member_count} members"
+            color_hex = f"#{role.color.value:06x}" if role.color.value != 0 else "#808080"
+            color_indicator = "⬜" if role.color.value == 0 else "🟩"  # White for default, green indicator for colored
+            role_info = f"{color_indicator} **{role.name}** | {member_count} members | {color_hex}"
             role_list.append(role_info)
         
         # Split into chunks jika terlalu panjang
