@@ -29,7 +29,7 @@ class TicTacToeGame:
         return True
     
     def get_board_display(self) -> str:
-        """Get board as string for display"""
+        """Get board as string for display (kept for reference)"""
         symbols = {None: "⬜", "X": "❌", "O": "⭕"}
         board_str = ""
         for i in range(9):
@@ -100,16 +100,29 @@ class TicTacToeGame:
 
 
 class TicTacToeView(View):
-    """View for Tic Tac Toe board"""
+    """View for Tic Tac Toe board - 3x3 grid layout"""
     
     def __init__(self, game: TicTacToeGame, interaction: discord.Interaction):
         super().__init__(timeout=180)
         self.game = game
         self.initial_interaction = interaction
         
-        # Create 9 buttons for the board
-        for i in range(9):
-            button = Button(label="⬜", custom_id=f"ttt_{i}", style=discord.ButtonStyle.secondary)
+        # Create buttons in 3x3 grid
+        # Row 1: positions 0, 1, 2
+        for i in range(3):
+            button = Button(label="⬜", custom_id=f"ttt_{i}", style=discord.ButtonStyle.secondary, row=0)
+            button.callback = self.make_move
+            self.add_item(button)
+        
+        # Row 2: positions 3, 4, 5
+        for i in range(3, 6):
+            button = Button(label="⬜", custom_id=f"ttt_{i}", style=discord.ButtonStyle.secondary, row=1)
+            button.callback = self.make_move
+            self.add_item(button)
+        
+        # Row 3: positions 6, 7, 8
+        for i in range(6, 9):
+            button = Button(label="⬜", custom_id=f"ttt_{i}", style=discord.ButtonStyle.secondary, row=2)
             button.callback = self.make_move
             self.add_item(button)
     
@@ -164,11 +177,10 @@ class TicTacToeView(View):
                 if isinstance(child, Button):
                     child.disabled = True
             embed = discord.Embed(
-                title="Game Over!",
-                description=self.game.get_board_display(),
+                title="🎉 You Win!",
+                description="Congratulations! You got 3 in a row!",
                 color=discord.Color.gold()
             )
-            embed.add_field(name="Result", value=f"🎉 **{self.game.player_x.name} wins!**", inline=False)
             await interaction.response.edit_message(embed=embed, view=self)
             return
         elif winner == "Draw":
@@ -177,11 +189,10 @@ class TicTacToeView(View):
                 if isinstance(child, Button):
                     child.disabled = True
             embed = discord.Embed(
-                title="Game Over!",
-                description=self.game.get_board_display(),
+                title="🤝 It's a Draw!",
+                description="No more moves available - everyone had a fair chance!",
                 color=discord.Color.gold()
             )
-            embed.add_field(name="Result", value="🤝 **It's a draw!**", inline=False)
             await interaction.response.edit_message(embed=embed, view=self)
             return
         
@@ -199,11 +210,10 @@ class TicTacToeView(View):
                         if isinstance(child, Button):
                             child.disabled = True
                     embed = discord.Embed(
-                        title="Game Over!",
-                        description=self.game.get_board_display(),
+                        title="🤖 Bot Wins!",
+                        description="Bot got 3 in a row! Better luck next time!",
                         color=discord.Color.gold()
                     )
-                    embed.add_field(name="Result", value="🤖 **Bot wins!**", inline=False)
                     await interaction.response.edit_message(embed=embed, view=self)
                     return
                 elif winner == "Draw":
@@ -212,11 +222,10 @@ class TicTacToeView(View):
                         if isinstance(child, Button):
                             child.disabled = True
                     embed = discord.Embed(
-                        title="Game Over!",
-                        description=self.game.get_board_display(),
+                        title="🤝 It's a Draw!",
+                        description="No more moves available - everyone had a fair chance!",
                         color=discord.Color.gold()
                     )
-                    embed.add_field(name="Result", value="🤝 **It's a draw!**", inline=False)
                     await interaction.response.edit_message(embed=embed, view=self)
                     return
             except Exception as e:
@@ -230,22 +239,12 @@ class TicTacToeView(View):
     
     def get_game_embed(self) -> discord.Embed:
         """Create game embed"""
-        current_text = "Your turn" if self.game.current_player == "X" else "🤖 Bot's turn"
+        current_text = "Your turn - Click a square ⬜" if self.game.current_player == "X" else "🤖 Bot is playing..."
         
         embed = discord.Embed(
             title="Tic Tac Toe",
-            description=self.game.get_board_display(),
+            description=current_text,
             color=discord.Color.blue()
-        )
-        embed.add_field(
-            name="Current Turn",
-            value=current_text,
-            inline=False
-        )
-        embed.add_field(
-            name="How to play",
-            value="Click any ⬜ square to place your ❌",
-            inline=False
         )
         return embed
     
@@ -278,11 +277,11 @@ class TicTacToeCog(commands.Cog):
             game = TicTacToeGame(interaction.user, player_o, vs_bot)
             view = TicTacToeView(game, interaction)
             
-            embed = view.get_game_embed()
-            embed.add_field(
-                name="Info",
-                value=f"Playing against: {'🤖 Bot' if vs_bot else player_o.mention}",
-                inline=False
+            opponent_text = "🤖 Bot" if vs_bot else player_o.mention
+            embed = discord.Embed(
+                title="Tic Tac Toe",
+                description=f"Playing vs: {opponent_text}\n\nClick ⬜ to place ❌",
+                color=discord.Color.blue()
             )
             
             await interaction.response.send_message(embed=embed, view=view)
