@@ -17,7 +17,7 @@ class DashboardDisplay:
         health_score, health_status = self.analytics.get_health_score(guild_id)
         
         embed = discord.Embed(
-            title="📊 Server Health Dashboard",
+            title="Server Health Dashboard",
             description=f"Server: **{guild.name}**",
             color=discord.Color.blue(),
             timestamp=datetime.now()
@@ -32,28 +32,28 @@ class DashboardDisplay:
         
         # Member Stats
         embed.add_field(
-            name="👥 Members",
+            name="Members",
             value=f"Total: **{members['total']}**\nHumans: {members['humans']} | Bots: {members['bots']}\nJoined Today: +{members['joined_today']} | Left: -{members['left_today']}",
             inline=True
         )
         
         # Activity Stats
         embed.add_field(
-            name="💬 Activity",
+            name="Activity",
             value=f"Total Messages: **{activity['total_messages']}**\nToday: {activity['messages_today']}\nActive Channels: {activity['channel_count']}",
             inline=True
         )
         
         # Engagement
         embed.add_field(
-            name="🎯 Engagement",
+            name="Engagement",
             value=f"Roles: {engagement['total_roles']}\nChannels: {engagement['total_channels']}\nVoice Active: {engagement['voice_active']}",
             inline=True
         )
         
         # Bot Stats
         embed.add_field(
-            name="🤖 Bot Status",
+            name="Bot Status",
             value=f"Latency: {bot_stats['latency_ms']}ms\nUptime: {self.analytics.get_uptime_formatted()}",
             inline=True
         )
@@ -68,7 +68,7 @@ class DashboardDisplay:
         recent_joins = self.analytics.get_recent_joins(guild_id, 5)
         
         embed = discord.Embed(
-            title="👥 Members Dashboard",
+            title="Members Dashboard",
             color=discord.Color.green(),
             timestamp=datetime.now()
         )
@@ -110,7 +110,7 @@ class DashboardDisplay:
         activity = self.analytics.get_activity_stats(guild_id)
         
         embed = discord.Embed(
-            title="💬 Activity Dashboard",
+            title="Activity Dashboard",
             color=discord.Color.purple(),
             timestamp=datetime.now()
         )
@@ -128,7 +128,7 @@ class DashboardDisplay:
             for i, (channel_id, data) in enumerate(activity['top_channels'].items(), 1):
                 top_text += f"{i}. {data['name']}: **{data['count']}** messages\n"
             embed.add_field(
-                name="🏆 Top Channels",
+                name="Top Channels",
                 value=top_text.strip(),
                 inline=False
             )
@@ -142,7 +142,7 @@ class DashboardDisplay:
         engagement = self.analytics.get_engagement_stats(guild_id)
         
         embed = discord.Embed(
-            title="🎯 Engagement Dashboard",
+            title="Engagement Dashboard",
             color=discord.Color.orange(),
             timestamp=datetime.now()
         )
