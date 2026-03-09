@@ -83,6 +83,14 @@ class HelpCommand(commands.Cog):
             inline=False
         )
         
+        # Role Management
+        embed.add_field(
+            name="Role Management",
+            value="`/addrole <member> <role>` - Add role to member (manage_roles required)\n"
+                  "`/delrole <member> <role>` - Remove role from member (manage_roles required)",
+            inline=False
+        )
+        
         # Voting System
         embed.add_field(
             name="Voting System",
