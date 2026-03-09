@@ -4,6 +4,8 @@ from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 import logging
+import json
+from pathlib import Path
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +20,41 @@ class AnnouncerBot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix="?", intents=intents)
+
+    def get_prefix_file(self, guild_id: int) -> str:
+        """Get prefix settings file path for guild"""
+        return f"data/prefix/prefix_settings_{guild_id}.json"
+    
+    def is_prefix_enabled(self, guild_id: int) -> bool:
+        """Check if prefix commands are enabled for guild"""
+        if not guild_id:
+            return True  # DMs always allow prefix
+        
+        filepath = self.get_prefix_file(guild_id)
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, 'r') as f:
+                    settings = json.load(f)
+                    return settings.get("enabled", True)
+            except:
+                return True  # Default to enabled if error
+        return True  # Default to enabled
+    
+    async def on_message(self, message: discord.Message):
+        """Process messages and check prefix status"""
+        if message.author.bot:
+            return
+        
+        # Check if message starts with prefix
+        if message.content.startswith(self.command_prefix):
+            # Check if prefix is enabled for guild
+            if message.guild:
+                if not self.is_prefix_enabled(message.guild.id):
+                    # Prefix is disabled, ignore the message
+                    return
+        
+        # Process commands normally
+        await self.process_commands(message)
 
     async def setup_hook(self):
         # Critical cogs that must load

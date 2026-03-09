@@ -94,7 +94,10 @@ class HelpCommand(commands.Cog):
         # Admin Tools
         embed.add_field(
             name="Admin Tools",
-            value="`/system` - View server resource stats (CPU, RAM, disk, uptime)",
+            value="`/system` - View server resource stats (CPU, RAM, disk, uptime)\n"
+                  "`/prefix enable` - Enable prefix commands on this server\n"
+                  "`/prefix disable` - Disable prefix commands on this server\n"
+                  "`/prefix view` - View current prefix settings",
             inline=False
         )
         
