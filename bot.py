@@ -41,17 +41,38 @@ class AnnouncerBot(commands.Bot):
         return True  # Default to enabled
     
     async def on_message(self, message: discord.Message):
-        """Process messages and check prefix status"""
+        """Process messages and check prefix status + custom messages"""
         if message.author.bot:
             return
         
         # Check if message starts with prefix
         if message.content.startswith(self.command_prefix):
-            # Check if prefix is enabled for guild
             if message.guild:
+                # Check if prefix is enabled for guild
                 if not self.is_prefix_enabled(message.guild.id):
                     # Prefix is disabled, ignore the message
                     return
+                
+                # Check for custom messages
+                content_after_prefix = message.content[len(self.command_prefix):].split()[0].lower()
+                
+                # Get custom message cog
+                custom_msg_cog = self.get_cog('CustomMessageManager')
+                if custom_msg_cog:
+                    custom_message = custom_msg_cog.get_custom_message(message.guild.id, content_after_prefix)
+                    if custom_message:
+                        # Send custom message as embed
+                        embed = discord.Embed(
+                            title="Custom Message",
+                            description=custom_message,
+                            color=discord.Color.blue()
+                        )
+                        embed.set_footer(text=f"Triggered by: ?{content_after_prefix}")
+                        try:
+                            await message.channel.send(embed=embed)
+                        except Exception as e:
+                            logger.error(f"Error sending custom message: {e}")
+                        return  # Don't process normal commands
         
         # Process commands normally
         await self.process_commands(message)

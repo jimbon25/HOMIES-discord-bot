@@ -101,6 +101,17 @@ class HelpCommand(commands.Cog):
             inline=False
         )
         
+        # Custom Messages
+        embed.add_field(
+            name="Custom Prefix Commands",
+            value="`/custommessage create` - Create custom prefix command (admin-only)\n"
+                  "`/custommessage list` - View all custom commands\n"
+                  "`/custommessage delete <name>` - Delete custom command (admin-only)\n"
+                  "`/custommessage disable <name>` - Disable custom command (admin-only)\n"
+                  "`/custommessage enable <name>` - Enable custom command (admin-only)",
+            inline=False
+        )
+        
         # Server Management
         embed.add_field(
             name="Server Management",
