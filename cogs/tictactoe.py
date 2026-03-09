@@ -283,7 +283,8 @@ class PlayAgainView(View):
         view = TicTacToeView(game, self.vs_bot)
         
         embed = view.get_game_embed()
-        await interaction.response.edit_message(embed=embed, view=view)
+        # Send as new message instead of editing (creates new session)
+        await interaction.response.send_message(embed=embed, view=view)
 
 
 class TicTacToeCog(commands.Cog):
