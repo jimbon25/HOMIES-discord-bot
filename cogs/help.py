@@ -79,7 +79,9 @@ class HelpCommand(commands.Cog):
             value="`/slowmode <channel> <seconds>` - Set slowmode (requires manage_channels)\n"
                   "`/disableslowmode <channel>` - Remove slowmode\n"
                   "`/mute <member> <duration>` - Timeout member (30m, 2h, 1d, etc)\n"
-                  "`/unmute <member>` - Remove mute from member",
+                  "`/unmute <member>` - Remove mute from member\n"
+                  "`/deafen <member>` - Deafen member (mutes audio, requires manage_server)\n"
+                  "`/undeafen <member>` - Undeafen member (restores audio, requires manage_server)",
             inline=False
         )
         

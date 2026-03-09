@@ -94,6 +94,21 @@ class AnnouncerBot(commands.Bot):
                     logger.error(f"❌ Failed to load cog {filename}: {type(e).__name__}: {e}")
                     failed_cogs.append(cog_name)
         
+        # Load cogs dari subfolder (e.g., cogs/moderation/)
+        for subfolder in os.listdir('./cogs'):
+            subfolder_path = os.path.join('./cogs', subfolder)
+            if os.path.isdir(subfolder_path) and not subfolder.startswith('__'):
+                for filename in os.listdir(subfolder_path):
+                    if filename.endswith('.py') and not filename.startswith('__'):
+                        cog_name = filename[:-3]
+                        try:
+                            await self.load_extension(f'cogs.{subfolder}.{cog_name}')
+                            logger.info(f"✅ Loaded cog: {subfolder}/{filename}")
+                            loaded_cogs.append(cog_name)
+                        except Exception as e:
+                            logger.error(f"❌ Failed to load cog {subfolder}/{filename}: {type(e).__name__}: {e}")
+                            failed_cogs.append(cog_name)
+        
         # Check if critical cogs failed
         failed_critical = [cog for cog in critical_cogs if cog in failed_cogs]
         if failed_critical:
