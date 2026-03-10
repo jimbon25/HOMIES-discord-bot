@@ -10,8 +10,11 @@ logger = logging.getLogger(__name__)
 class OwnerChat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.owner_id = None
+        self.owner_ids = set()  # Support multiple owners
         self.loaded = False
+        
+        # Additional owner IDs (hardcoded)
+        self.additional_owner_ids = {698517223978958888}  # Feinada
         
         # Unsplash API key for image fetching (optional)
         self.unsplash_api_key = os.getenv('UNSPLASH_API_KEY', None)
@@ -21,6 +24,13 @@ class OwnerChat(commands.Cog):
         # Format: trigger_keyword (lowercase) → response message(s)
         # Text responses
         self.owner_responses = {
+            'homies': 'Hi fein kamu kembali! ada yang bisa aku bantu hari ini?',
+            'tidak ada aman saja': 'Hahaha aman-aman saja bro! Santai aja, aku di sini buat bantu kamu kapan pun kamu butuh! 😎',
+            'iya sayang': 'Aww, iya sayang! wkwkwk, kamu lucu banget! Ada yang bisa aku bantu hari ini?',
+            'gak ada njir': 'Hahaha yauda kalau gitu kalau ada yang mau kamu tanyain atau butuh bantuan, jangan ragu untuk tanya ya! 😊',
+            'fast respon bgt gak kayak dia': 'Hahaha iya dong feinada! Aku selalu siap sedia untuk kamu, beda banget sama dia yang suka lama responnya wkwkwk. Ada yang bisa aku bantu hari ini?',
+            'aku cantik atau tidak': 'Hahaha kamu cantik banget! Gak usah ragu sama penampilanmu, yang penting kamu nyaman dengan dirimu sendiri! 😎',
+            'makasih': 'Sama-sama cantik! kalau ada pertanyaan atau butuh bantuan, jangan ragu untuk tanya ya! 😊',
             'hi': 'Hi, you comeback brother?',
             'hello': 'Hi Brother, how feel you today?',
             'yo': 'Yo! What\'s up bro?',
@@ -34,6 +44,7 @@ class OwnerChat(commands.Cog):
             'halo jawab pertanyaanku dengan bahasa': 'Haha baik Mahoraga | DONTPINGME ada pertanyaan apa hari ini?',
             'kapan pd3': 'Hahaha kapan perang dunia ke 3? aku tidak tahu mungkin bisa di jelaskan konteksnya dalam pembahasan apa Mahoraga | DONTPINGME!',
             'aku capek': 'Istirahat dulu bro, kesehatan itu penting. Tidur yang cukup ya! 💪',
+            'baiklah': 'Baiklah! tidur yang cukup ya bro, jangan begadang terus! 😴',
             'boribel': 'Haha Boribel! Meme klasik selamanya di hati kita 😂',
             'siapa lu': 'Gua bot, temen setia lo bro! Siapa nama gua? 🤖',
             'bot apa': 'Gua bot Discord lo! Bisa respond chat, fetch images, dan apapun yang lo butuh!',
@@ -43,6 +54,7 @@ class OwnerChat(commands.Cog):
             'udah berapa jam': 'Waktu sudah berjalan bro. Jangan lupa istirahat dan makan! ⏰',
             'siapa yang ngebully': 'Siapa yang berani? Gua siap defend lo! 🛡️',
             'ada server baru': 'Server baru? Sounds interesting! Lo pengen apa di server itu?',
+            'jawab dengan bahasa indonesia': 'Baik Mahoraga | DONTPINGME, ada yang bisa saya bantu hari ini? Ada pertanyaan atau topik yang ingin dibahas?'
         }
         
         # Image triggers - will fetch from API or use fallback URLs
@@ -57,17 +69,20 @@ class OwnerChat(commands.Cog):
         }
     
     async def load_owner_id(self):
-        """Load owner ID from bot application info"""
+        """Load owner IDs from bot application info"""
         if self.loaded:
             return
         
         try:
             app_info = await self.bot.application_info()
-            self.owner_id = app_info.owner.id
-            logger.info(f"✅ OwnerChat: Loaded owner ID {self.owner_id}")
+            # Add primary owner from app info
+            self.owner_ids.add(app_info.owner.id)
+            # Add additional owners
+            self.owner_ids.update(self.additional_owner_ids)
+            logger.info(f"✅ OwnerChat: Loaded owner IDs {self.owner_ids}")
             self.loaded = True
         except Exception as e:
-            logger.error(f"❌ OwnerChat: Failed to load owner ID: {e}")
+            logger.error(f"❌ OwnerChat: Failed to load owner IDs: {e}")
     
     async def fetch_image_from_unsplash(self, query: str) -> str:
         """Fetch random image URL from Unsplash API"""
@@ -127,11 +142,11 @@ class OwnerChat(commands.Cog):
     async def on_message(self, message: discord.Message):
         """Listen for owner messages and respond accordingly"""
         # Ignore if bot message or not ready
-        if message.author.bot or not self.loaded or not self.owner_id:
+        if message.author.bot or not self.loaded or not self.owner_ids:
             return
         
-        # Only respond to owner in DMs or anywhere
-        if message.author.id != self.owner_id:
+        # Only respond to owners
+        if message.author.id not in self.owner_ids:
             return
         
         # Get message content in lowercase for matching
