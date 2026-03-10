@@ -21,7 +21,7 @@ class OwnerChat(commands.Cog):
         # Format: trigger_keyword (lowercase) → response message(s)
         # Text responses
         self.owner_responses = {
-            'hi': 'Hi Brother, how feel you today?',
+            'hi': 'Hi, you comeback brother?',
             'hello': 'Hi Brother, how feel you today?',
             'yo': 'Yo! What\'s up bro?',
             'good': 'Nice. Glad to hear it!',
@@ -30,6 +30,19 @@ class OwnerChat(commands.Cog):
             'ok': 'Got it. Let me know if you need anything.',
             'bye': 'Peace out bro! See you later.',
             'goodbye': 'Peace out bro! See you later.',
+            'kick feinada': 'Okay bro, kicking Feinada... Just kidding, I can\'t do that!',
+            'halo jawab pertanyaanku dengan bahasa': 'Haha baik Mahoraga | DONTPINGME ada pertanyaan apa hari ini?',
+            'kapan pd3': 'Hahaha kapan perang dunia ke 3? aku tidak tahu mungkin bisa di jelaskan konteksnya dalam pembahasan apa Mahoraga | DONTPINGME!',
+            'aku capek': 'Istirahat dulu bro, kesehatan itu penting. Tidur yang cukup ya! 💪',
+            'boribel': 'Haha Boribel! Meme klasik selamanya di hati kita 😂',
+            'siapa lu': 'Gua bot, temen setia lo bro! Siapa nama gua? 🤖',
+            'bot apa': 'Gua bot Discord lo! Bisa respond chat, fetch images, dan apapun yang lo butuh!',
+            'giliran siapa': 'Giliran lo untuk tidur bro 😴 Jangan begadang terus!',
+            'emang aku orang yang apa': 'Lo orang yang paling penting buat gua bro! 💙',
+            'mau apa': 'Mau bantu lo dengan apapun yang lo butuh! Ada yang bisa gua lakukan?',
+            'udah berapa jam': 'Waktu sudah berjalan bro. Jangan lupa istirahat dan makan! ⏰',
+            'siapa yang ngebully': 'Siapa yang berani? Gua siap defend lo! 🛡️',
+            'ada server baru': 'Server baru? Sounds interesting! Lo pengen apa di server itu?',
         }
         
         # Image triggers - will fetch from API or use fallback URLs
