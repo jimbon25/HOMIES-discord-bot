@@ -1,9 +1,11 @@
 """Owner-specific chat responses and interactions"""
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import logging
 import aiohttp
 import os
+import json
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -26,53 +28,84 @@ class OwnerChat(commands.Cog):
         self.unsplash_api_key = os.getenv('UNSPLASH_API_KEY', None)
         self.giphy_api_key = os.getenv('GIPHY_API_KEY', None)
         
-        # Owner-specific message triggers and responses
-        # Format: trigger_keyword (lowercase) → response message(s)
-        # Text responses
-        self.owner_responses = {
-            'homies': 'Hi fein kamu kembali! ada yang bisa aku bantu hari ini?',
-            'tidak ada aman saja': 'Hahaha aman-aman saja bro! Santai aja, aku di sini buat bantu kamu kapan pun kamu butuh! 😎',
-            'iya sayang': 'Aww, iya sayang! wkwkwk, kamu lucu banget! Ada yang bisa aku bantu hari ini?',
-            'gak ada njir': 'Hahaha yauda kalau gitu kalau ada yang mau kamu tanyain atau butuh bantuan, jangan ragu untuk tanya ya! 😊',
-            'fast respon bgt gak kayak dia': 'Hahaha iya dong feinada! Aku selalu siap sedia untuk kamu, beda banget sama dia yang suka lama responnya wkwkwk. Ada yang bisa aku bantu hari ini?',
-            'aku cantik atau tidak': 'Hahaha kamu cantik banget! Gak usah ragu sama penampilanmu, yang penting kamu nyaman dengan dirimu sendiri! 😎',
-            'makasih': 'Sama-sama cantik! kalau ada pertanyaan atau butuh bantuan, jangan ragu untuk tanya ya! 😊',
-            'hi': 'Hi, you comeback brother?',
-            'hello': 'Hi Brother, how feel you today?',
-            'yo': 'Yo! What\'s up bro?',
-            'good': 'Nice. Glad to hear it!',
-            'thanks': 'Anytime bro! Always here for you.',
-            'thank you': 'Anytime bro! Always here for you.',
-            'ok': 'Got it. Let me know if you need anything.',
-            'bye': 'Peace out bro! See you later.',
-            'goodbye': 'Peace out bro! See you later.',
-            'kick feinada': 'Okay bro, kicking Feinada... Just kidding, I can\'t do that!',
-            'halo jawab pertanyaanku dengan bahasa': 'Haha baik Mahoraga | DONTPINGME ada pertanyaan apa hari ini?',
-            'kapan pd3': 'Hahaha kapan perang dunia ke 3? aku tidak tahu mungkin bisa di jelaskan konteksnya dalam pembahasan apa Mahoraga | DONTPINGME!',
-            'aku capek': 'Istirahat dulu bro, kesehatan itu penting. Tidur yang cukup ya! 💪',
-            'baiklah': 'Baiklah! tidur yang cukup ya bro, jangan begadang terus! 😴',
-            'boribel': 'Haha Boribel! Meme klasik selamanya di hati kita 😂',
-            'siapa lu': 'Gua bot, temen setia lo bro! Siapa nama gua? 🤖',
-            'bot apa': 'Gua bot Discord lo! Bisa respond chat, fetch images, dan apapun yang lo butuh!',
-            'giliran siapa': 'Giliran lo untuk tidur bro 😴 Jangan begadang terus!',
-            'emang aku orang yang apa': 'Lo orang yang paling penting buat gua bro! 💙',
-            'mau apa': 'Mau bantu lo dengan apapun yang lo butuh! Ada yang bisa gua lakukan?',
-            'udah berapa jam': 'Waktu sudah berjalan bro. Jangan lupa istirahat dan makan! ⏰',
-            'siapa yang ngebully': 'Siapa yang berani? Gua siap defend lo! 🛡️',
-            'ada server baru': 'Server baru? Sounds interesting! Lo pengen apa di server itu?',
-            'jawab dengan bahasa indonesia': 'Baik Mahoraga | DONTPINGME, ada yang bisa saya bantu hari ini? Ada pertanyaan atau topik yang ingin dibahas?'
-        }
+        # Path to JSON file with responses
+        self.json_path = Path(__file__).parent / "owner_responses.json"
+        self.json_last_modified = None  # Track file modification time
         
-        # Image triggers - will fetch from API or use fallback URLs
-        # Format: trigger_keyword → (search_query, embed_title, embed_color)
-        self.image_triggers = {
-            'cat': ('cat', '🐱 Here\'s a cute cat for you', discord.Color.orange()),
-            'cats': ('cat', '🐱 Here\'s a cute cat for you', discord.Color.orange()),
-            'dog': ('dog', '🐕 Here\'s a cute dog for you', discord.Color.blurple()),
-            'dogs': ('dog', '🐕 Here\'s a cute dog for you', discord.Color.blurple()),
-            'pic': ('nature', '🌅 Here\'s a nice pic for you', discord.Color.green()),
-            'photo': ('nature', '🌅 Here\'s a nice pic for you', discord.Color.green()),
-        }
+        # Load responses from JSON - owner-specific only
+        self.owner_specific_responses = {}  # {owner_id: {trigger: response}}
+        self.image_triggers = {}
+        self.load_responses_from_json()
+        
+        # Start auto-reload task
+        self.auto_reload_responses.start()
+    
+    def load_responses_from_json(self):
+        """Load owner-specific and image responses from JSON file"""
+        try:
+            if not self.json_path.exists():
+                logger.error(f"❌ OwnerChat: JSON file not found at {self.json_path}")
+                return
+            
+            with open(self.json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Load owner-specific responses
+            owners_data = data.get('owners', {})
+            self.owner_specific_responses = {}
+            for owner_id_str, owner_data in owners_data.items():
+                try:
+                    owner_id = int(owner_id_str)
+                    responses = owner_data.get('responses', {})
+                    self.owner_specific_responses[owner_id] = responses
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"⚠️  Invalid owner ID in JSON: {owner_id_str}")
+            
+            # Load image triggers - convert color int back to discord.Color
+            raw_image_triggers = data.get('image_triggers', {})
+            self.image_triggers = {}
+            for trigger, config in raw_image_triggers.items():
+                color = discord.Color(config.get('color', 0))  # Convert int to Color
+                self.image_triggers[trigger] = (
+                    config.get('query', trigger),
+                    config.get('title', 'Here you go'),
+                    color
+                )
+            
+            total_owner_responses = sum(len(r) for r in self.owner_specific_responses.values())
+            logger.info(f"✅ OwnerChat: Loaded {total_owner_responses} owner-specific responses + {len(self.image_triggers)} image triggers from JSON")
+        
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ OwnerChat: Invalid JSON in {self.json_path}: {e}")
+        except Exception as e:
+            logger.error(f"❌ OwnerChat: Error loading responses from JSON: {e}")
+    
+    @tasks.loop(seconds=5)
+    async def auto_reload_responses(self):
+        """Auto-reload responses if JSON file is modified"""
+        try:
+            if not self.json_path.exists():
+                return
+            
+            # Get current file modification time
+            current_mtime = self.json_path.stat().st_mtime
+            
+            # Check if file has been modified
+            if self.json_last_modified is None:
+                # First time check
+                self.json_last_modified = current_mtime
+            elif current_mtime > self.json_last_modified:
+                # File has been modified, reload it
+                logger.info("🔄 OwnerChat: Detected JSON file change, reloading...")
+                self.json_last_modified = current_mtime
+                self.load_responses_from_json()
+        except Exception as e:
+            logger.error(f"❌ OwnerChat: Error in auto-reload task: {e}")
+    
+    @auto_reload_responses.before_loop
+    async def before_auto_reload(self):
+        """Wait for bot to be ready before starting auto-reload"""
+        await self.bot.wait_until_ready()
     
     async def load_owner_id(self):
         """Load owner IDs from bot application info"""
@@ -158,12 +191,13 @@ class OwnerChat(commands.Cog):
         # Get message content in lowercase for matching
         content = message.content.strip().lower()
         
-        # Check if message matches any text trigger first
-        for trigger, response in self.owner_responses.items():
+        # Check owner-specific responses (priority)
+        owner_responses = self.owner_specific_responses.get(message.author.id, {})
+        for trigger, response in owner_responses.items():
             if content == trigger or content.startswith(trigger + ' '):
                 try:
                     await message.reply(response, mention_author=False)
-                    logger.info(f"🗨️  OwnerChat: Owner triggered '{trigger}' → responded")
+                    logger.info(f"🗨️  OwnerChat: Owner {message.author.id} triggered '{trigger}'")
                 except Exception as e:
                     logger.error(f"❌ OwnerChat: Error responding to owner: {e}")
                 return  # Only respond once per message
@@ -182,51 +216,103 @@ class OwnerChat(commands.Cog):
                         )
                         embed.set_image(url=image_url)
                         await message.reply(embed=embed, mention_author=False)
-                        logger.info(f"🖼️  OwnerChat: Owner triggered '{trigger}' → sent image")
+                        logger.info(f"🖼️  OwnerChat: Owner {message.author.id} triggered '{trigger}' → sent image")
                     else:
-                        await message.reply(f"Sorry bro, couldn't fetch a {query} image right now. Try again later.", mention_author=False)
+                        await message.reply(f"Sorry, couldn't fetch a {query} image right now. Try again later.", mention_author=False)
                 except Exception as e:
                     logger.error(f"❌ OwnerChat: Error fetching image for '{trigger}': {e}")
                     await message.reply(f"Error fetching image: {str(e)}", mention_author=False)
                 return
     
     # Easy method to add new responses dynamically if needed
-    def add_response(self, trigger: str, response: str):
-        """Add a new trigger-response pair"""
-        self.owner_responses[trigger.lower()] = response
-        logger.info(f"➕ OwnerChat: Added text response for '{trigger}'")
-    
-    def remove_response(self, trigger: str):
-        """Remove a trigger-response pair"""
+    def add_owner_response(self, owner_id: int, trigger: str, response: str):
+        """Add a new trigger-response pair to specific owner"""
+        if owner_id not in self.owner_specific_responses:
+            self.owner_specific_responses[owner_id] = {}
+        
         trigger_lower = trigger.lower()
-        if trigger_lower in self.owner_responses:
-            del self.owner_responses[trigger_lower]
-            logger.info(f"➖ OwnerChat: Removed text response for '{trigger}'")
+        self.owner_specific_responses[owner_id][trigger_lower] = response
+        self.save_responses_to_json()
+        logger.info(f"➕ OwnerChat: Added response for owner {owner_id} trigger '{trigger}'")
+    
+    def remove_owner_response(self, owner_id: int, trigger: str):
+        """Remove a specific owner's trigger-response pair"""
+        trigger_lower = trigger.lower()
+        if owner_id in self.owner_specific_responses and trigger_lower in self.owner_specific_responses[owner_id]:
+            del self.owner_specific_responses[owner_id][trigger_lower]
+            self.save_responses_to_json()
+            logger.info(f"➖ OwnerChat: Removed response for owner {owner_id} trigger '{trigger}'")
     
     def get_responses(self) -> dict:
-        """Get all current text responses"""
-        return self.owner_responses.copy()
+        """Get all current responses"""
+        return self.owner_specific_responses.copy()
     
     def add_image_trigger(self, trigger: str, search_query: str, title: str = None, color = None):
-        """Add a new image trigger"""
+        """Add a new image trigger and save to JSON"""
         if color is None:
             color = discord.Color.blue()
         if title is None:
             title = f"Here's a {search_query} for you"
         
-        self.image_triggers[trigger.lower()] = (search_query, title, color)
+        trigger_lower = trigger.lower()
+        self.image_triggers[trigger_lower] = (search_query, title, color)
+        self.save_responses_to_json()
         logger.info(f"➕ OwnerChat: Added image trigger for '{trigger}' (query: {search_query})")
     
     def remove_image_trigger(self, trigger: str):
-        """Remove an image trigger"""
+        """Remove an image trigger and save to JSON"""
         trigger_lower = trigger.lower()
         if trigger_lower in self.image_triggers:
             del self.image_triggers[trigger_lower]
+            self.save_responses_to_json()
             logger.info(f"➖ OwnerChat: Removed image trigger for '{trigger}'")
     
     def get_image_triggers(self) -> dict:
         """Get all current image triggers"""
         return self.image_triggers.copy()
+    
+    def save_responses_to_json(self):
+        """Save current responses to JSON file"""
+        try:
+            data = {
+                'owners': {},
+                'image_triggers': {}
+            }
+            
+            # Convert owner-specific responses back to format suitable for JSON
+            for owner_id, responses in self.owner_specific_responses.items():
+                data['owners'][str(owner_id)] = {
+                    'responses': responses
+                }
+            
+            # Convert discord.Color objects to int for JSON serialization
+            for trigger, (query, title, color) in self.image_triggers.items():
+                data['image_triggers'][trigger] = {
+                    'query': query,
+                    'title': title,
+                    'color': color.value  # Convert discord.Color to int
+                }
+            
+            with open(self.json_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"✅ OwnerChat: Saved responses to JSON")
+        except Exception as e:
+            logger.error(f"❌ OwnerChat: Error saving to JSON: {e}")
+    
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def reload_owner_responses(self, ctx):
+        """Reload owner responses from JSON file (owner only)"""
+        self.load_responses_from_json()
+        total_responses = sum(len(r) for r in self.owner_specific_responses.values())
+        await ctx.send(f"✅ Reloaded! Total responses: {total_responses}, Image triggers: {len(self.image_triggers)}")
+        logger.info(f"🔄 OwnerChat: Reloaded from JSON")
+    
+    def cog_unload(self):
+        """Cleanup when cog is unloaded"""
+        self.auto_reload_responses.cancel()
+        logger.info("✅ OwnerChat: Cleanup complete")
 
 
 async def setup(bot):
