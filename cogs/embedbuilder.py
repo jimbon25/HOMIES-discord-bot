@@ -50,7 +50,7 @@ class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
         """Parse color from HEX code or color name"""
         color_str = color_str.strip().lower()
         
-        # Discord color constants - only valid methods from discord.py
+        # Discord color constants - only valid methods from discord.py 2.0+
         color_map = {
             'red': discord.Color.red(),
             'blue': discord.Color.blue(),
@@ -69,7 +69,7 @@ class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
             'light_grey': discord.Color.light_gray(),
             'blurple': discord.Color.blurple(),
             'brand': discord.Color.blurple(),
-            'white': discord.Color.white(),
+            'white': discord.Color.from_rgb(255, 255, 255),
             'black': discord.Color.from_rgb(0, 0, 0),
         }
         
