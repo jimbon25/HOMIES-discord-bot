@@ -147,7 +147,6 @@ class OwnerChat(commands.Cog):
                             color=color
                         )
                         embed.set_image(url=image_url)
-                        embed.set_footer(text="Powered by Unsplash")
                         await message.reply(embed=embed, mention_author=False)
                         logger.info(f"🖼️  OwnerChat: Owner triggered '{trigger}' → sent image")
                     else:
