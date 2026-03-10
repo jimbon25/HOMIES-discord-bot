@@ -145,6 +145,7 @@ class CustomMessageManager(commands.Cog):
             )
     
     @custommessage_group.command(name="list", description="List all custom prefix commands")
+    @app_commands.checks.has_permissions(administrator=True)
     async def custommessage_list(self, interaction: discord.Interaction):
         """List all custom messages"""
         messages = self.load_custom_messages(interaction.guild.id)
