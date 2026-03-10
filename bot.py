@@ -153,65 +153,62 @@ async def on_ready():
 async def announce(interaction: discord.Interaction, message: str, channel: discord.TextChannel, title: str = "ANNOUNCEMENT", show_sender: bool = False, role: discord.Role = None, format: str = "embed", text_size: str = "normal"):
     """Send an announcement to a specific channel."""
     
-    if format not in ["embed", "plain"]:
-        await interaction.response.send_message(
-            "❌ Invalid format. Use 'embed' or 'plain'",
-            ephemeral=True
-        )
-        return
+    # Defer immediately to prevent timeout
+    await interaction.response.defer(ephemeral=True)
     
-    if text_size not in ["normal", "medium", "large"]:
-        await interaction.response.send_message(
-            "❌ Invalid text size. Use 'normal', 'medium', or 'large'",
-            ephemeral=True
-        )
-        return
+    try:
+        if format not in ["embed", "plain"]:
+            await interaction.followup.send("❌ Invalid format. Use 'embed' or 'plain'", ephemeral=True)
+            return
+        
+        if text_size not in ["normal", "medium", "large"]:
+            await interaction.followup.send("❌ Invalid text size. Use 'normal', 'medium', or 'large'", ephemeral=True)
+            return
+        
+        content = ""
+        if role:
+            # Special handling for @everyone role to prevent double mention
+            is_everyone = role.is_default() or role.name == "@everyone" or role.id == interaction.guild.id
+            
+            if is_everyone:
+                # For @everyone, use plain text mention
+                content = "@everyone "
+            else:
+                # For other roles, use proper mention format
+                content = role.mention + " "
+        
+        if format == "embed":
+            embed = discord.Embed(
+                title=f"{title}",
+                description=message,
+                color=discord.Color.blue()
+            )
+            if show_sender:
+                embed.set_footer(text=f"Sent by: {interaction.user.name}")
+            
+            await channel.send(content=content, embed=embed)
+        else:  # plain format
+            # Apply text size
+            if text_size == "large":
+                plain_message = f"# {message}"
+            elif text_size == "medium":
+                plain_message = f"## {message}"
+            else:  # normal
+                plain_message = message
+            
+            if show_sender:
+                plain_message += f"\n\n*Sent by: {interaction.user.name}*"
+            
+            await channel.send(content=content + plain_message)
+        
+        await interaction.followup.send(f"✅ Announcement successfully sent to {channel.mention}", ephemeral=True)
     
-    await interaction.response.send_message(f"Sending to {channel.mention}...", ephemeral=True)
-    
-    content = ""
-    if role:
-        # Debug logging for @everyone detection
-        print(f"DEBUG: Role selected: {role.name}, ID: {role.id}, is_default: {role.is_default()}, guild.id: {interaction.guild.id}")
-        
-        # Special handling for @everyone role to prevent double mention
-        # Check multiple ways to detect @everyone role
-        is_everyone = role.is_default() or role.name == "@everyone" or role.id == interaction.guild.id
-        
-        print(f"DEBUG: is_everyone result: {is_everyone}")
-        
-        if is_everyone:
-            # For @everyone, use plain text mention
-            content = "@everyone "
-        else:
-            # For other roles, use proper mention format
-            content = role.mention + " "
-    
-    if format == "embed":
-        embed = discord.Embed(
-            title=f"{title}",
-            description=message,
-            color=discord.Color.blue()
-        )
-        if show_sender:
-            embed.set_footer(text=f"Sent by: {interaction.user.name}")
-        
-        await channel.send(content=content, embed=embed)
-    else:  # plain format
-        # Apply text size
-        if text_size == "large":
-            plain_message = f"# {message}"
-        elif text_size == "medium":
-            plain_message = f"## {message}"
-        else:  # normal
-            plain_message = message
-        
-        if show_sender:
-            plain_message += f"\n\n*Sent by: {interaction.user.name}*"
-        
-        await channel.send(content=content + plain_message)
-    
-    await interaction.edit_original_response(content=f"✅ Announcement successfully sent to {channel.mention}")
+    except discord.Forbidden:
+        await interaction.followup.send("❌ Bot doesn't have permission to send messages in that channel", ephemeral=True)
+    except discord.HTTPException as e:
+        await interaction.followup.send(f"❌ Failed to send announcement: {str(e)}", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ An error occurred: {str(e)}", ephemeral=True)
 
 @announce.error
 async def announce_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
