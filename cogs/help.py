@@ -122,13 +122,6 @@ class HelpCommand(commands.Cog):
             inline=False
         )
         
-        # Fun & Games
-        embed.add_field(
-            name="Fun & Games",
-            value="`/tictactoe` - Play Tic Tac Toe against bot or friend\n"
-                  "`/tictactoe @player` - Play against specific player",
-            inline=False
-        )
         
         # Server Management
         embed.add_field(
