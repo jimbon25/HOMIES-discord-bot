@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Local owner responses (configuration)
+cogs/owner/owner_responses.json
+
 # Python
 __pycache__/
 *.py[cod]
