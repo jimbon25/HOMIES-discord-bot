@@ -2,6 +2,8 @@
 import discord
 from discord.ext import commands
 import logging
+import aiohttp
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -11,8 +13,13 @@ class OwnerChat(commands.Cog):
         self.owner_id = None
         self.loaded = False
         
+        # Unsplash API key for image fetching (optional)
+        self.unsplash_api_key = os.getenv('UNSPLASH_API_KEY', None)
+        self.giphy_api_key = os.getenv('GIPHY_API_KEY', None)
+        
         # Owner-specific message triggers and responses
         # Format: trigger_keyword (lowercase) → response message(s)
+        # Text responses
         self.owner_responses = {
             'hi': 'Hi Brother, how feel you today?',
             'hello': 'Hi Brother, how feel you today?',
@@ -23,6 +30,17 @@ class OwnerChat(commands.Cog):
             'ok': 'Got it. Let me know if you need anything.',
             'bye': 'Peace out bro! See you later.',
             'goodbye': 'Peace out bro! See you later.',
+        }
+        
+        # Image triggers - will fetch from API or use fallback URLs
+        # Format: trigger_keyword → (search_query, embed_title, embed_color)
+        self.image_triggers = {
+            'cat': ('cat', '🐱 Here\'s a cute cat for you', discord.Color.orange()),
+            'cats': ('cat', '🐱 Here\'s a cute cat for you', discord.Color.orange()),
+            'dog': ('dog', '🐕 Here\'s a cute dog for you', discord.Color.blurple()),
+            'dogs': ('dog', '🐕 Here\'s a cute dog for you', discord.Color.blurple()),
+            'pic': ('nature', '🌅 Here\'s a nice pic for you', discord.Color.green()),
+            'photo': ('nature', '🌅 Here\'s a nice pic for you', discord.Color.green()),
         }
     
     async def load_owner_id(self):
@@ -37,6 +55,54 @@ class OwnerChat(commands.Cog):
             self.loaded = True
         except Exception as e:
             logger.error(f"❌ OwnerChat: Failed to load owner ID: {e}")
+    
+    async def fetch_image_from_unsplash(self, query: str) -> str:
+        """Fetch random image URL from Unsplash API"""
+        if not self.unsplash_api_key:
+            logger.warning("⚠️  Unsplash API key not set. Set UNSPLASH_API_KEY in .env")
+            return None
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                url = f"https://api.unsplash.com/photos/random"
+                params = {
+                    'query': query,
+                    'count': 1,
+                    'client_id': self.unsplash_api_key
+                }
+                async with session.get(url, params=params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if isinstance(data, list) and len(data) > 0:
+                            return data[0]['urls']['regular']
+                        elif isinstance(data, dict):
+                            return data.get('urls', {}).get('regular')
+        except Exception as e:
+            logger.error(f"❌ OwnerChat: Error fetching from Unsplash: {e}")
+        
+        return None
+    
+    async def fetch_gif_from_giphy(self, query: str) -> str:
+        """Fetch random GIF from Giphy API"""
+        if not self.giphy_api_key:
+            logger.warning("⚠️  Giphy API key not set. Set GIPHY_API_KEY in .env")
+            return None
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                url = f"https://api.giphy.com/v1/gifs/random"
+                params = {
+                    'q': query,
+                    'api_key': self.giphy_api_key
+                }
+                async with session.get(url, params=params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get('data', {}).get('images', {}).get('original', {}).get('url')
+        except Exception as e:
+            logger.error(f"❌ OwnerChat: Error fetching from Giphy: {e}")
+        
+        return None
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -58,7 +124,7 @@ class OwnerChat(commands.Cog):
         # Get message content in lowercase for matching
         content = message.content.strip().lower()
         
-        # Check if message matches any trigger
+        # Check if message matches any text trigger first
         for trigger, response in self.owner_responses.items():
             if content == trigger or content.startswith(trigger + ' '):
                 try:
@@ -66,24 +132,68 @@ class OwnerChat(commands.Cog):
                     logger.info(f"🗨️  OwnerChat: Owner triggered '{trigger}' → responded")
                 except Exception as e:
                     logger.error(f"❌ OwnerChat: Error responding to owner: {e}")
-                break  # Only respond once per message
+                return  # Only respond once per message
+        
+        # Check if message matches any image trigger
+        for trigger, (query, title, color) in self.image_triggers.items():
+            if content == trigger or content.startswith(trigger + ' '):
+                try:
+                    # Try to fetch image
+                    image_url = await self.fetch_image_from_unsplash(query)
+                    
+                    if image_url:
+                        embed = discord.Embed(
+                            title=title,
+                            color=color
+                        )
+                        embed.set_image(url=image_url)
+                        embed.set_footer(text="Powered by Unsplash")
+                        await message.reply(embed=embed, mention_author=False)
+                        logger.info(f"🖼️  OwnerChat: Owner triggered '{trigger}' → sent image")
+                    else:
+                        await message.reply(f"Sorry bro, couldn't fetch a {query} image right now. Try again later.", mention_author=False)
+                except Exception as e:
+                    logger.error(f"❌ OwnerChat: Error fetching image for '{trigger}': {e}")
+                    await message.reply(f"Error fetching image: {str(e)}", mention_author=False)
+                return
     
     # Easy method to add new responses dynamically if needed
     def add_response(self, trigger: str, response: str):
         """Add a new trigger-response pair"""
         self.owner_responses[trigger.lower()] = response
-        logger.info(f"➕ OwnerChat: Added response for '{trigger}'")
+        logger.info(f"➕ OwnerChat: Added text response for '{trigger}'")
     
     def remove_response(self, trigger: str):
         """Remove a trigger-response pair"""
         trigger_lower = trigger.lower()
         if trigger_lower in self.owner_responses:
             del self.owner_responses[trigger_lower]
-            logger.info(f"➖ OwnerChat: Removed response for '{trigger}'")
+            logger.info(f"➖ OwnerChat: Removed text response for '{trigger}'")
     
     def get_responses(self) -> dict:
-        """Get all current responses"""
+        """Get all current text responses"""
         return self.owner_responses.copy()
+    
+    def add_image_trigger(self, trigger: str, search_query: str, title: str = None, color = None):
+        """Add a new image trigger"""
+        if color is None:
+            color = discord.Color.blue()
+        if title is None:
+            title = f"Here's a {search_query} for you"
+        
+        self.image_triggers[trigger.lower()] = (search_query, title, color)
+        logger.info(f"➕ OwnerChat: Added image trigger for '{trigger}' (query: {search_query})")
+    
+    def remove_image_trigger(self, trigger: str):
+        """Remove an image trigger"""
+        trigger_lower = trigger.lower()
+        if trigger_lower in self.image_triggers:
+            del self.image_triggers[trigger_lower]
+            logger.info(f"➖ OwnerChat: Removed image trigger for '{trigger}'")
+    
+    def get_image_triggers(self) -> dict:
+        """Get all current image triggers"""
+        return self.image_triggers.copy()
 
 
 async def setup(bot):
