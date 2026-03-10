@@ -13,8 +13,14 @@ class OwnerChat(commands.Cog):
         self.owner_ids = set()  # Support multiple owners
         self.loaded = False
         
-        # Additional owner IDs (hardcoded)
-        self.additional_owner_ids = {698517223978958888}  # Feinada
+        # Load additional owner IDs from .env (comma-separated)
+        additional_owners_str = os.getenv('ADDITIONAL_OWNER_IDS', '')
+        self.additional_owner_ids = set()
+        if additional_owners_str:
+            try:
+                self.additional_owner_ids = {int(uid.strip()) for uid in additional_owners_str.split(',') if uid.strip()}
+            except ValueError:
+                logger.warning("⚠️  Invalid ADDITIONAL_OWNER_IDS in .env. Should be comma-separated numbers.")
         
         # Unsplash API key for image fetching (optional)
         self.unsplash_api_key = os.getenv('UNSPLASH_API_KEY', None)
