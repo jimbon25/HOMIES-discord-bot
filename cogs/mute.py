@@ -146,7 +146,7 @@ class Mute(commands.Cog):
                 inline=False
             )
             
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         
         except discord.Forbidden:
             await interaction.response.send_message(
@@ -202,7 +202,7 @@ class Mute(commands.Cog):
                 inline=False
             )
             
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         
         except discord.Forbidden:
             await interaction.response.send_message(
