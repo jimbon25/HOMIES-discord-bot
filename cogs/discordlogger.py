@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import queue
 import asyncio
+import os
 
 # Create logger for this module
 logger = logging.getLogger(__name__)
@@ -91,45 +92,31 @@ class DiscordLogger(commands.Cog):
         try:
             logger.info("🔄 DiscordLogger: Starting setup...")
             
-            # Get owner guild (bot owner's server)
-            app_info = await self.bot.application_info()
-            owner_id = app_info.owner.id
-            
-            # Find owner's server
-            owner_guild = None
-            for guild in self.bot.guilds:
-                # Check if guild owner is the app owner
-                if guild.owner_id == owner_id:
-                    owner_guild = guild
-                    break
-            
-            if not owner_guild:
-                logger.warning("⚠️  DiscordLogger: Could not find owner guild. Logging disabled.")
+            # Get logging channel ID from .env
+            logging_channel_id = os.getenv('LOGGING_CHANNEL_ID')
+            if not logging_channel_id:
+                logger.error("❌ DiscordLogger: LOGGING_CHANNEL_ID not set in .env. Logging disabled.")
                 return
             
-            self.owner_guild = owner_guild
-            logger.info(f"✅ DiscordLogger: Owner guild found: {owner_guild.name} (ID: {owner_guild.id})")
+            try:
+                logging_channel_id = int(logging_channel_id)
+            except ValueError:
+                logger.error(f"❌ DiscordLogger: LOGGING_CHANNEL_ID is not a valid integer: {logging_channel_id}")
+                return
             
-            # Find existing #bot-logs channel - case insensitive search
-            log_channel = None
-            for channel in owner_guild.text_channels:
-                if channel.name.lower() == "bot-logs":
-                    log_channel = channel
-                    logger.info(f"✅ DiscordLogger: Found existing #bot-logs channel (ID: {channel.id})")
-                    break
-            
-            if not log_channel:
-                # Create the channel only if it doesn't exist
-                try:
-                    log_channel = await owner_guild.create_text_channel(
-                        name="bot-logs",
-                        topic="Live bot logs and events",
-                        reason="Discord logging system initialization"
-                    )
-                    logger.info(f"✅ DiscordLogger: Created new #bot-logs channel (ID: {log_channel.id})")
-                except Exception as e:
-                    logger.error(f"❌ DiscordLogger: Failed to create #bot-logs channel: {e}")
-                    return
+            # Fetch the channel directly by ID
+            try:
+                log_channel = await self.bot.fetch_channel(logging_channel_id)
+                logger.info(f"✅ DiscordLogger: Connected to logging channel #{log_channel.name} (ID: {log_channel.id})")
+            except discord.NotFound:
+                logger.error(f"❌ DiscordLogger: Channel with ID {logging_channel_id} not found. Please check LOGGING_CHANNEL_ID in .env")
+                return
+            except discord.Forbidden:
+                logger.error(f"❌ DiscordLogger: No permission to access channel ID {logging_channel_id}")
+                return
+            except Exception as e:
+                logger.error(f"❌ DiscordLogger: Failed to fetch channel ID {logging_channel_id}: {e}")
+                return
             
             self.log_channel = log_channel
             
