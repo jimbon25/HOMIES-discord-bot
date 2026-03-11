@@ -35,6 +35,7 @@ class DiscordLogger(commands.Cog):
         self.discord_handler = DiscordLogHandler(self.log_queue)
         self.log_channel = None
         self.owner_guild = None
+        self.setup_complete = False  # Flag to prevent duplicate setup
         # Don't start task yet - will start in on_ready
         self.send_logs_started = False
     
@@ -83,16 +84,18 @@ class DiscordLogger(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Setup logging when bot is ready"""
-        if self.log_channel is not None:
-            return  # Already setup
+        # Use flag to prevent multiple setups
+        if self.setup_complete:
+            return
         
         try:
+            logger.info("🔄 DiscordLogger: Starting setup...")
+            
             # Get owner guild (bot owner's server)
             app_info = await self.bot.application_info()
             owner_id = app_info.owner.id
             
-            # Find owner's server - either owned by owner or where owner is member
-            # Try to find guild where bot is and owner is
+            # Find owner's server
             owner_guild = None
             for guild in self.bot.guilds:
                 # Check if guild owner is the app owner
@@ -101,30 +104,31 @@ class DiscordLogger(commands.Cog):
                     break
             
             if not owner_guild:
-                logger.warning("⚠️  Could not find owner guild. Logging disabled.")
+                logger.warning("⚠️  DiscordLogger: Could not find owner guild. Logging disabled.")
                 return
             
             self.owner_guild = owner_guild
-            logger.info(f"🔍 Owner guild found: {owner_guild.name} (ID: {owner_guild.id})")
+            logger.info(f"✅ DiscordLogger: Owner guild found: {owner_guild.name} (ID: {owner_guild.id})")
             
-            # Find or create #bot-logs channel
+            # Find existing #bot-logs channel - case insensitive search
             log_channel = None
             for channel in owner_guild.text_channels:
-                if channel.name == "bot-logs":
+                if channel.name.lower() == "bot-logs":
                     log_channel = channel
+                    logger.info(f"✅ DiscordLogger: Found existing #bot-logs channel (ID: {channel.id})")
                     break
             
             if not log_channel:
-                # Create the channel
+                # Create the channel only if it doesn't exist
                 try:
                     log_channel = await owner_guild.create_text_channel(
                         name="bot-logs",
                         topic="Live bot logs and events",
                         reason="Discord logging system initialization"
                     )
-                    logger.info(f"✅ Created #bot-logs channel in {owner_guild.name}")
+                    logger.info(f"✅ DiscordLogger: Created new #bot-logs channel (ID: {log_channel.id})")
                 except Exception as e:
-                    logger.error(f"❌ Failed to create #bot-logs channel: {e}")
+                    logger.error(f"❌ DiscordLogger: Failed to create #bot-logs channel: {e}")
                     return
             
             self.log_channel = log_channel
@@ -146,7 +150,10 @@ class DiscordLogger(commands.Cog):
                 self.send_logs.start()
                 self.send_logs_started = True
             
-            logger.info(f"✅ Discord logging active in #{log_channel.name}")
+            # Mark setup as complete
+            self.setup_complete = True
+            
+            logger.info(f"✅ DiscordLogger: Logging active in #{log_channel.name}")
             
             # Send startup message
             embed = discord.Embed(
@@ -154,9 +161,15 @@ class DiscordLogger(commands.Cog):
                 description=f"Logging system initialized at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                 color=discord.Color.green()
             )
-            embed.add_field(name="Guild", value=owner_guild.name, inline=False)
+            embed.add_field(name="Guild", value=owner_guild.name, inline=True)
+            embed.add_field(name="Channel", value=f"#{log_channel.name}", inline=True)
             embed.add_field(name="Status", value="✅ Live logging active", inline=False)
             await log_channel.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"❌ DiscordLogger: Error in on_ready setup: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             
             # Test log message to verify system is working
             logger.info("🧪 DISCORD LOGGER TEST: System verification log sent to #bot-logs")
