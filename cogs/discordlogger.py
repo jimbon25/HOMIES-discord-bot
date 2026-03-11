@@ -148,7 +148,6 @@ class DiscordLogger(commands.Cog):
                 description=f"Logging system initialized at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                 color=discord.Color.green()
             )
-            embed.add_field(name="Guild", value=owner_guild.name, inline=True)
             embed.add_field(name="Channel", value=f"#{log_channel.name}", inline=True)
             embed.add_field(name="Status", value="✅ Live logging active", inline=False)
             await log_channel.send(embed=embed)
@@ -157,12 +156,6 @@ class DiscordLogger(commands.Cog):
             logger.error(f"❌ DiscordLogger: Error in on_ready setup: {e}")
             import traceback
             logger.error(traceback.format_exc())
-            
-            # Test log message to verify system is working
-            logger.info("🧪 DISCORD LOGGER TEST: System verification log sent to #bot-logs")
-            
-        except Exception as e:
-            logger.error(f"❌ Error setting up Discord logging: {type(e).__name__}: {e}")
 
 async def setup(bot):
     await bot.add_cog(DiscordLogger(bot))
