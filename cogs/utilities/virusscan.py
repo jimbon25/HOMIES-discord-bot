@@ -227,6 +227,18 @@ class VirusScan(commands.Cog):
             # Parse results
             data = result["data"]
             attributes = result["attributes"]
+            
+            # Validate we have analysis data
+            if not attributes or not data:
+                embed = discord.Embed(
+                    title="⚠️ No Analysis Data",
+                    description="URL found but no analysis data available yet. Try again in a moment.",
+                    color=discord.Color.gold()
+                )
+                embed.add_field(name="URL", value=url, inline=False)
+                await interaction.followup.send(embed=embed)
+                return
+            
             last_analysis_stats = attributes.get("last_analysis_stats", {})
             last_analysis_results = attributes.get("last_analysis_results", {})
             
@@ -377,8 +389,20 @@ class VirusScan(commands.Cog):
                 color=discord.Color.blue(),
             )
             
-            analysis_id = data.get("id", "").split("-")[1] if data.get("id") else "unknown"
-            vt_link = f"https://www.virustotal.com/gui/home/url/{analysis_id.replace(':', '-')}" if analysis_id else "https://www.virustotal.com"
+            # Extract analysis ID safely
+            analysis_id = "unknown"
+            if data.get("id"):
+                id_parts = data.get("id", "").split("-")
+                if len(id_parts) > 1:
+                    analysis_id = id_parts[1]
+                else:
+                    analysis_id = data.get("id")
+            
+            # Build VirusTotal link
+            if analysis_id and analysis_id != "unknown":
+                vt_link = f"https://www.virustotal.com/gui/home/url/{analysis_id.replace(':', '-')}"
+            else:
+                vt_link = f"https://www.virustotal.com/search/{quote(url)}"
             
             embed_footer.add_field(
                 name="🔍 Full Report",
@@ -393,11 +417,22 @@ class VirusScan(commands.Cog):
             await interaction.followup.send(embeds=embeds)
         
         except Exception as e:
+            import traceback
+            error_msg = str(e)
+            tb = traceback.format_exc()
+            
             embed = discord.Embed(
                 title="❌ Scan Error",
-                description=f"An error occurred: {str(e)}",
+                description=f"An error occurred: {error_msg}",
                 color=discord.Color.red()
             )
+            embed.add_field(name="URL", value=url, inline=False)
+            
+            # Log error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"VirusScan error for URL {url}: {error_msg}\n{tb}")
+            
             await interaction.followup.send(embed=embed)
 
 async def setup(bot):
