@@ -194,3 +194,6 @@ class ActivityTracker:
         
         with open(uptime_file, 'w') as f:
             json.dump(data, f, indent=2)
+
+# Create global instance
+activity_tracker = ActivityTracker()
