@@ -1,7 +1,7 @@
 import os
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import logging
 import json
@@ -76,6 +76,19 @@ class AnnouncerBot(commands.Bot):
         # Process commands normally
         await self.process_commands(message)
 
+    @tasks.loop(seconds=300)  # Flush cache every 5 minutes
+    async def flush_activity_cache(self):
+        """Periodically flush activity tracker cache to disk"""
+        try:
+            from dashboard.tracker import activity_tracker
+            await activity_tracker.flush_cache()
+        except Exception as e:
+            logger.error(f"Error flushing activity cache: {e}")
+    
+    @flush_activity_cache.before_loop
+    async def before_flush(self):
+        await self.wait_until_ready()
+
     async def setup_hook(self):
         # Critical cogs that must load
         critical_cogs = ['mute', 'voicechannel', 'dashboard', 'stayafk']
@@ -117,6 +130,10 @@ class AnnouncerBot(commands.Bot):
         # Sinkronisasi slash commands ke global
         await self.tree.sync()
         logger.info(f"Synced slash commands for {self.user}")
+        
+        # Start periodic cache flush task
+        if not self.flush_activity_cache.is_running():
+            self.flush_activity_cache.start()
 
 bot = AnnouncerBot()
 
@@ -150,7 +167,7 @@ async def on_ready():
 @bot.tree.command(name="announce", description="Send announcement to a specific channel")
 @app_commands.describe(message="Announcement message content", channel="Target channel for announcement", title="Announcement title (optional)", show_sender="Show sender name in footer (default: no)", role="Role to mention (optional)", format="Message format: embed or plain (default: embed)", text_size="Text size for plain format: normal, medium, large (default: normal)")
 @app_commands.checks.has_permissions(administrator=True)
-async def announce(interaction: discord.Interaction, message: str, channel: discord.TextChannel, title: str = "ANNOUNCEMENT", show_sender: bool = False, role: discord.Role = None, format: str = "embed", text_size: str = "normal"):
+async def announce(interaction: discord.Interaction, message: str, channel: discord.TextChannel, title: str = "", show_sender: bool = False, role: discord.Role = None, format: str = "embed", text_size: str = "normal"):
     """Send an announcement to a specific channel."""
     
     # Defer immediately to prevent timeout
@@ -179,7 +196,7 @@ async def announce(interaction: discord.Interaction, message: str, channel: disc
         
         if format == "embed":
             embed = discord.Embed(
-                title=f"{title}",
+                title=title if title else None,
                 description=message,
                 color=discord.Color.blue()
             )

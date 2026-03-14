@@ -78,9 +78,6 @@ class AFK(commands.Cog):
                     
                     await message.channel.send(embed=embed)
 
-        # Process commands
-        await self.bot.process_commands(message)
-
 async def setup(bot):
     await bot.add_cog(AFK(bot))
 

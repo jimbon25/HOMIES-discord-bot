@@ -1,13 +1,18 @@
-"""Activity Tracker - Records server events and activity"""
+"""Activity Tracker - Records server events and activity with async I/O and caching"""
 import json
 import os
+import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Dict, Optional
 
 class ActivityTracker:
     def __init__(self, data_file: str = "data/stats.json"):
         self.data_file = data_file
+        self.cache: Dict[int, dict] = {}  # In-memory cache: {guild_id: data}
+        self.cache_dirty: set = set()  # Track which guilds need saving
         self.ensure_data_file()
+        self.sync_interval = 300  # Write to disk every 5 minutes
     
     def get_guild_data_file(self, guild_id: int) -> str:
         """Get per-guild data file path"""
@@ -49,27 +54,54 @@ class ActivityTracker:
         }
     
     def load_data(self, guild_id: int = None):
-        """Load data from JSON file - per-guild if guild_id provided"""
+        """Load data from cache (or file if not cached) - per-guild"""
         if guild_id:
+            # Check cache first
+            if guild_id in self.cache:
+                return self.cache[guild_id].copy()
+            
             data_file = self.get_guild_data_file(guild_id)
-        else:
-            data_file = self.data_file
+            if os.path.exists(data_file):
+                with open(data_file, 'r') as f:
+                    data = json.load(f)
+                    self.cache[guild_id] = data  # Cache it
+                    return data.copy()
         
-        if os.path.exists(data_file):
-            with open(data_file, 'r') as f:
-                return json.load(f)
         return self.get_default_structure()
     
     def save_data(self, data, guild_id: int = None):
-        """Save data to JSON file - per-guild if guild_id provided"""
+        """Save data to cache, mark as dirty for async flush"""
         if guild_id:
-            data_file = self.get_guild_data_file(guild_id)
+            self.cache[guild_id] = data
+            self.cache_dirty.add(guild_id)
         else:
-            data_file = self.data_file
-        
-        data["last_updated"] = datetime.now().isoformat()
-        Path(data_file).parent.mkdir(parents=True, exist_ok=True)
-        with open(data_file, 'w') as f:
+            data["last_updated"] = datetime.now().isoformat()
+            Path(data_file).parent.mkdir(parents=True, exist_ok=True)
+            with open(data_file, 'w') as f:
+                json.dump(data, f, indent=2)
+    
+    async def flush_cache(self):
+        """Async flush cache to disk"""
+        loop = asyncio.get_event_loop()
+        for guild_id in list(self.cache_dirty):
+            data = self.cache[guild_id].copy()
+            data["last_updated"] = datetime.now().isoformat()
+            data_file = self.get_guild_data_file(guild_id)
+            
+            # Run file write in executor (non-blocking)
+            await loop.run_in_executor(
+                None,
+                self._write_file,
+                data_file,
+                data
+            )
+            self.cache_dirty.discard(guild_id)
+    
+    @staticmethod
+    def _write_file(filepath: str, data: dict):
+        """Helper to write file - runs in executor"""
+        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+        with open(filepath, 'w') as f:
             json.dump(data, f, indent=2)
     
     def update_server_info(self, guild_id: int, server_id: int, member_count: int, human_count: int, bot_count: int, role_count: int, channel_count: int):

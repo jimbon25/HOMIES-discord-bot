@@ -21,7 +21,7 @@ class DisableSlowmode(commands.Cog):
                 color=discord.Color.green()
             )
             
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         
         except Exception as e:
             await interaction.response.send_message(

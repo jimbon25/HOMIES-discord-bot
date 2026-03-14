@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+import io
 
 class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
     title_input = discord.ui.TextInput(
@@ -45,6 +46,7 @@ class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
         super().__init__()
         self.channel = channel
         self.bot = bot
+        self.attachment = None
     
     def parse_color(self, color_str: str) -> discord.Color:
         """Parse color from HEX code or color name"""
@@ -90,6 +92,9 @@ class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
         return discord.Color.blue()
     
     async def on_submit(self, interaction: discord.Interaction):
+        # Defer immediately to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+        
         color = self.parse_color(self.color_input.value)
         embed = discord.Embed(
             title=self.title_input.value,
@@ -105,9 +110,9 @@ class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
             )
         
         # Create button untuk confirm
-        confirm_view = ConfirmEmbedView(embed, self.channel)
+        confirm_view = ConfirmEmbedView(embed, self.channel, self.attachment)
         
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"Preview embed untuk {self.channel.mention}:",
             embed=embed,
             view=confirm_view,
@@ -115,33 +120,48 @@ class CreateEmbedModal(discord.ui.Modal, title="Create Embed"):
         )
 
 class ConfirmEmbedView(discord.ui.View):
-    def __init__(self, embed, channel):
+    def __init__(self, embed, channel, attachment=None):
         super().__init__()
         self.embed = embed
         self.channel = channel
+        self.attachment = attachment
     
     @discord.ui.button(label="✅ Confirm & Send", style=discord.ButtonStyle.green)
     async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
-            await self.channel.send(embed=self.embed)
+            # Defer to prevent interaction timeout
+            await interaction.response.defer()
+            
+            # Send embed with attachment if provided
+            if self.attachment:
+                # Download attachment and convert to File
+                file_bytes = await self.attachment.read()
+                file = discord.File(io.BytesIO(file_bytes), filename=self.attachment.filename)
+                await self.channel.send(embed=self.embed, file=file)
+            else:
+                await self.channel.send(embed=self.embed)
             
             # Disable semua button
             for item in self.children:
                 item.disabled = True
             
-            await interaction.response.edit_message(
+            # Update message dengan button disabled
+            await interaction.message.edit(view=self)
+            
+            await interaction.followup.send(
                 content=f"✅ Embed berhasil dikirim ke {self.channel.mention}!",
-                view=self
+                ephemeral=True
             )
         except Exception as e:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"❌ Error: {str(e)}",
                 ephemeral=True
             )
     
     @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.red)
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message(
+        await interaction.response.defer()
+        await interaction.followup.send(
             "Embed dibatalkan, tidak ada yang dikirim.",
             ephemeral=True
         )
@@ -150,12 +170,13 @@ class EmbedBuilder(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="createembed", description="Create custom embed with fields")
-    @app_commands.describe(channel="Target channel for embed")
+    @app_commands.command(name="createembed", description="Create custom embed with fields and optional image/file")
+    @app_commands.describe(channel="Target channel for embed", attachment="Optional file to attach with embed")
     @app_commands.checks.has_permissions(administrator=True)
-    async def create_embed(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        """Membuat custom embed dengan modal."""
+    async def create_embed(self, interaction: discord.Interaction, channel: discord.TextChannel, attachment: discord.Attachment = None):
+        """Membuat custom embed dengan modal, image URL, dan optional file attachment."""
         modal = CreateEmbedModal(channel, self.bot)
+        modal.attachment = attachment
         await interaction.response.send_modal(modal)
 
 async def setup(bot):
