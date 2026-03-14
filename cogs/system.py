@@ -2,6 +2,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+import asyncio
 import psutil
 import platform
 from datetime import datetime, timedelta
@@ -17,9 +18,14 @@ class SystemMonitor(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
     
-    def get_cpu_usage(self) -> float:
-        """Get CPU usage percentage"""
-        return psutil.cpu_percent(interval=1)
+    def get_cpu_usage_blocking(self) -> float:
+        """Get CPU usage percentage (blocking call - use with executor)"""
+        return psutil.cpu_percent(interval=0.1)  # Reduced from 1s to 0.1s for speed
+    
+    async def get_cpu_usage(self) -> float:
+        """Get CPU usage percentage (async, non-blocking)"""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.get_cpu_usage_blocking)
     
     def get_ram_usage(self) -> dict:
         """Get RAM usage statistics"""
@@ -129,7 +135,7 @@ class SystemMonitor(commands.Cog):
         
         try:
             # Gather all system data
-            cpu_usage = self.get_cpu_usage()
+            cpu_usage = await self.get_cpu_usage()  # Now async!
             ram_info = self.get_ram_usage()
             disk_info = self.get_disk_usage()
             uptime = self.get_system_uptime()

@@ -232,5 +232,45 @@ async def announce_error(interaction: discord.Interaction, error: app_commands.A
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("❌ You don't have permission (Admin) to use this command.", ephemeral=True)
 
+# Global error handler for all app commands
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    """Global error handler for all slash commands"""
+    
+    # Skip if already responded
+    if interaction.response.is_done():
+        return
+    
+    error_msg = "❌ An error occurred while processing your command."
+    
+    # Handle specific error types
+    if isinstance(error, app_commands.MissingPermissions):
+        error_msg = "❌ You don't have permission to use this command."
+    elif isinstance(error, app_commands.MissingRole):
+        error_msg = "❌ You don't have the required role to use this command."
+    elif isinstance(error, app_commands.BotMissingPermissions):
+        error_msg = "❌ I don't have permission to perform this action."
+    elif isinstance(error, app_commands.CommandOnCooldown):
+        error_msg = f"⏱️ This command is on cooldown. Try again in {error.retry_after:.1f}s"
+    elif isinstance(error, app_commands.NoPrivateMessage):
+        error_msg = "❌ This command can only be used in servers, not in DMs."
+    elif isinstance(error, app_commands.CheckFailure):
+        error_msg = "❌ You don't meet the requirements to use this command."
+    elif isinstance(error, discord.Forbidden):
+        error_msg = "❌ I don't have permission to complete this action."
+    elif isinstance(error, discord.NotFound):
+        error_msg = "❌ The target was not found."
+    
+    try:
+        await interaction.response.send_message(error_msg, ephemeral=True)
+    except discord.InteractionResponded:
+        try:
+            await interaction.followup.send(error_msg, ephemeral=True)
+        except Exception as e:
+            logger.error(f"Failed to send error message: {e}")
+    
+    # Log the error for debugging
+    logger.error(f"App command error in {interaction.command.name}: {type(error).__name__}: {error}")
+
 if __name__ == "__main__":
     bot.run(TOKEN)
