@@ -249,7 +249,7 @@ class CryptoPrice(commands.Cog):
         if asset.lower() in ["list", "support", "supported", "help"]:
             embed = discord.Embed(
                 title="💰 Supported Assets - Price Tracker",
-                description="Get live prices for crypto, US stocks, and Indonesian IDX stocks",
+                description="Tap any code block to copy and use `/price <name>`",
                 color=discord.Color.gold()
             )
             
@@ -262,23 +262,22 @@ class CryptoPrice(commands.Cog):
                     key = gecko_id
                     if key not in seen:
                         seen.add(key)
-                        crypto_list += f"• {name.upper()}"
-                        if len(crypto_list.split("\n")) >= 6:
-                            break
-                        crypto_list += "\n"
+                        if crypto_list:
+                            crypto_list += " "
+                        crypto_list += f"`{name}`"
             
             embed.add_field(
                 name="🪙 Cryptocurrencies (15+ supported)",
-                value=crypto_list + "\n• ... and more",
+                value=crypto_list,
                 inline=False
             )
             
             # Indonesian stocks
             indo_stocks = ""
-            for i, (name, symbol) in enumerate(list(self.indonesian_stocks.items())):
-                indo_stocks += f"• {name.upper()} ({symbol})"
-                if i < len(self.indonesian_stocks) - 1:
-                    indo_stocks += "\n"
+            for name, symbol in list(self.indonesian_stocks.items()):
+                if indo_stocks:
+                    indo_stocks += " "
+                indo_stocks += f"`{name}`"
             
             embed.add_field(
                 name="🇮🇩 Indonesian Stocks (IDX)",
@@ -289,8 +288,9 @@ class CryptoPrice(commands.Cog):
             # US stocks
             us_stocks = ""
             for name, symbol in list(self.us_stocks.items()):
-                us_stocks += f"• {name.upper()} ({symbol})\n"
-            us_stocks = us_stocks.strip()
+                if us_stocks:
+                    us_stocks += " "
+                us_stocks += f"`{name}`"
             
             embed.add_field(
                 name="🇺🇸 US Stocks",
@@ -300,12 +300,12 @@ class CryptoPrice(commands.Cog):
             
             # Example outputs
             embed.add_field(
-                name="📝 Example Commands",
+                name="📝 Example Usage",
                 value="`/price bitcoin` → Crypto with 24h change & market cap\n`/price bbri` → IDX stock with OHLC data\n`/price aapl` → US stock with OHLC data",
                 inline=False
             )
             
-            embed.set_footer(text="All prices are live • Supports 33+ assets • Free tier")
+            embed.set_footer(text="All prices are live • Supports 33+ assets")
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
