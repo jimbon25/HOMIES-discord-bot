@@ -4,6 +4,7 @@ from discord.ext import commands
 import aiohttp
 import os
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +21,12 @@ class SocialStats(commands.Cog):
                 "x-rapidapi-host": "instagram-statistics-api.p.rapidapi.com"
             }
             
-            params = {"ig_username": username}
+            # Use search endpoint with perPage parameter
+            params = {"ig_username": username, "perPage": 20}
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    "https://instagram-statistics-api.p.rapidapi.com/",
+                    "https://instagram-statistics-api.p.rapidapi.com/search",
                     params=params,
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=10)
@@ -34,25 +36,27 @@ class SocialStats(commands.Cog):
                         
                         # Extract relevant stats from Instagram Statistics API
                         if "data" in data and "meta" in data and data["meta"]["code"] == 200:
-                            user_data = data["data"]
+                            # Find exact username match in results
+                            user_data = None
+                            for user in data["data"]:
+                                if user.get("screenName", "").lower() == username.lower():
+                                    user_data = user
+                                    break
+                            
+                            if not user_data:
+                                return {"success": False, "error": "User not found"}
+                            
                             return {
                                 "success": True,
                                 "username": user_data.get("screenName", username),
                                 "name": user_data.get("name", username),
                                 "followers": user_data.get("usersCount", 0),
-                                "posts": user_data.get("posts", 0) or len(user_data.get("lastPosts", [])),
-                                "avg_likes": user_data.get("avgLikes", 0),
-                                "avg_comments": user_data.get("avgComments", 0),
-                                "engagement_rate": round(user_data.get("avgER", 0) * 100, 2),
-                                "bio": user_data.get("description", "No bio"),
                                 "profile_pic": user_data.get("image", ""),
                                 "is_verified": user_data.get("verified", False),
                                 "url": user_data.get("url", f"https://instagram.com/{username}"),
                                 "source": "Instagram"
                             }
                         return {"success": False, "error": "Invalid response format"}
-                    elif resp.status == 404:
-                        return {"success": False, "error": "User not found"}
                     else:
                         return {"success": False, "error": f"API error: {resp.status}"}
         
@@ -67,7 +71,7 @@ class SocialStats(commands.Cog):
         try:
             headers = {
                 "x-rapidapi-key": self.rapidapi_key,
-                "x-rapidapi-host": self.tiktok_host
+                "x-rapidapi-host": "tiktok-api11.p.rapidapi.com"
             }
             
             params = {"username": username}
@@ -153,7 +157,7 @@ class SocialStats(commands.Cog):
             # Format Instagram embed
             embed = discord.Embed(
                 title=f"📸 Instagram Stats - @{result['username']}",
-                description=result["bio"],
+                description=result["name"],
                 color=discord.Color.from_rgb(224, 121, 57),  # Instagram pink
                 url=result["url"]
             )
@@ -167,35 +171,11 @@ class SocialStats(commands.Cog):
                 inline=True
             )
             
-            embed.add_field(
-                name="📝 Posts",
-                value=f"{result['posts']:,}",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="📊 Engagement Rate",
-                value=f"{result['engagement_rate']}%",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="❤️ Avg Likes",
-                value=f"{result['avg_likes']:,}",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="💬 Avg Comments",
-                value=f"{result['avg_comments']:,}",
-                inline=True
-            )
-            
             if verified:
                 embed.add_field(
                     name="Status",
                     value=verified,
-                    inline=False
+                    inline=True
                 )
             
             if result["profile_pic"]:
