@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import aiohttp
 import asyncio
+import os
 from datetime import datetime
 import logging
 
@@ -13,6 +14,8 @@ class CryptoPrice(commands.Cog):
         self.bot = bot
         self.coingecko_url = "https://api.coingecko.com/api/v3"
         self.cryptocompare_url = "https://min-api.cryptocompare.com/data"
+        self.finnhub_url = "https://finnhub.io/api/v1"
+        self.finnhub_api_key = os.getenv('FINNHUB_API_KEY')
         
         # Supported cryptocurrencies mapping
         # Maps user input to CoinGecko ID and CryptoCompare symbol
@@ -40,6 +43,70 @@ class CryptoPrice(commands.Cog):
             "arbitrum": {"gecko": "arbitrum", "cc": "ARB"},
             "arb": {"gecko": "arbitrum", "cc": "ARB"},
         }
+        
+        # Indonesian stocks (IDX)
+        self.indonesian_stocks = {
+            "bbri": "BBRI.IDX",
+            "bbca": "BBCA.IDX",
+            "asii": "ASII.IDX",
+            "tlkm": "TLKM.IDX",
+            "bmri": "BMRI.IDX",
+            "bnga": "BNGA.IDX",
+            "unvr": "UNVR.IDX",
+            "adro": "ADRO.IDX",
+            "intp": "INTP.IDX",
+            "jsmr": "JSMR.IDX",
+        }
+        
+        # Popular US stocks
+        self.us_stocks = {
+            "aapl": "AAPL",
+            "googl": "GOOGL",
+            "msft": "MSFT",
+            "amzn": "AMZN",
+            "meta": "META",
+            "nvda": "NVDA",
+            "tsla": "TSLA",
+            "amg": "AMG",
+        }
+    
+    async def fetch_stock(self, symbol: str) -> dict:
+        """Fetch stock price from Finnhub"""
+        try:
+            params = {
+                "symbol": symbol,
+                "token": self.finnhub_api_key
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.finnhub_url}/quote",
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        
+                        # Check if we got valid data
+                        if "c" in data and data["c"] > 0:
+                            return {
+                                "success": True,
+                                "price": float(data.get("c", 0)),
+                                "change": float(data.get("d", 0)),  # absolute change
+                                "change_percent": float(data.get("dp", 0)),  # percent change
+                                "high": float(data.get("h", 0)),
+                                "low": float(data.get("l", 0)),
+                                "open": float(data.get("o", 0)),
+                                "previous_close": float(data.get("pc", 0)),
+                                "timestamp": data.get("t", 0),
+                                "source": "Finnhub"
+                            }
+                        return {"success": False, "error": "Invalid price data"}
+                    else:
+                        return {"success": False, "error": f"API returned {resp.status}"}
+        except Exception as e:
+            logger.error(f"Finnhub error: {e}")
+            return {"success": False, "error": str(e)}
     
     async def fetch_coingecko(self, crypto_id: str) -> dict:
         """Fetch crypto price from CoinGecko"""
@@ -133,6 +200,30 @@ class CryptoPrice(commands.Cog):
         # All sources failed
         return None, "Unable to fetch price from all sources (CoinGecko & CryptoCompare unavailable)"
     
+    def detect_asset_type(self, search_term: str) -> tuple:
+        """Detect if search term is crypto or stock, return (type, symbol)"""
+        search_lower = search_term.lower()
+        
+        # Check if it's a crypto
+        if search_lower in self.crypto_ids:
+            crypto_data = self.crypto_ids[search_lower]
+            return "crypto", search_lower
+        
+        # Check if it's an Indonesian stock
+        if search_lower in self.indonesian_stocks:
+            return "stock", self.indonesian_stocks[search_lower]
+        
+        # Check if it's a US stock
+        if search_lower in self.us_stocks:
+            return "stock", self.us_stocks[search_lower]
+        
+        # If matches pattern like "BBRI.IDX" or "AAPL"
+        if "." in search_term:
+            return "stock", search_term.upper()
+        
+        # Default: try as stock with uppercase
+        return "stock", search_term.upper()
+    
     def format_price(self, price: float) -> str:
         """Format price with proper notation"""
         if price >= 1000:
@@ -142,61 +233,61 @@ class CryptoPrice(commands.Cog):
         else:
             return f"${price:.8f}"
     
-    @app_commands.command(name="price", description="Get cryptocurrency price")
-    @app_commands.describe(cryptocurrency="Cryptocurrency name or symbol (e.g., bitcoin, btc, ethereum, eth)")
-    async def price_command(self, interaction: discord.Interaction, cryptocurrency: str):
-        """Get current cryptocurrency price with multi-source fallback"""
+    @app_commands.command(name="price", description="Get cryptocurrency or stock price")
+    @app_commands.describe(asset="Crypto (bitcoin, ETH) or Stock (BBRI, AAPL)")
+    async def price_command(self, interaction: discord.Interaction, asset: str):
+        """Get current price for cryptocurrency or stock with multi-source fallback"""
         
-        # Check if user wants to see supported cryptos
-        if cryptocurrency.lower() in ["list", "support", "supported", "help"]:
+        # Check if user wants to see supported assets
+        if asset.lower() in ["list", "support", "supported", "help"]:
             embed = discord.Embed(
-                title="💰 Supported Cryptocurrencies",
+                title="💰 Supported Assets",
                 description="Use `/price <name>` to get current price",
                 color=discord.Color.gold()
             )
             
-            # Group cryptos by category
-            cryptos_list = []
-            for name, data in self.crypto_ids.items():
-                if name not in [v["gecko"] for v in self.crypto_ids.values() if isinstance(v, dict)]:
-                    # Only show user-friendly names, not duplicates
-                    continue
-                gecko_id = data["gecko"]
-                cc_symbol = data["cc"]
-                if (gecko_id, cc_symbol) not in [(d["gecko"], d["cc"]) for _, d in list(self.crypto_ids.items())[:len(self.crypto_ids)//2]]:
-                    continue
-            
-            # Better way: group by what we find
+            crypto_list = ""
             seen = set()
-            grouped = {}
             for name, data in sorted(self.crypto_ids.items()):
                 if isinstance(data, dict):
                     gecko_id = data["gecko"]
-                    cc_symbol = data["cc"]
-                    key = (gecko_id, cc_symbol)
+                    key = gecko_id
                     if key not in seen:
                         seen.add(key)
-                        if gecko_id not in grouped:
-                            grouped[gecko_id] = []
-                        grouped[gecko_id].append((name, cc_symbol))
-            
-            # Format output
-            crypto_text = ""
-            for gecko_id in sorted(grouped.keys()):
-                names = grouped[gecko_id]
-                name_aliases = ", ".join([n[0].capitalize() for n in names])
-                symbol = names[0][1]
-                crypto_text += f"• **{name_aliases}** `{symbol}`\n"
+                        crypto_list += f"• {name.upper()}\n"
+                if len(crypto_list.split("\n")) > 10:
+                    crypto_list += "• ...\n"
+                    break
             
             embed.add_field(
-                name="Available Coins",
-                value=crypto_text,
-                inline=False
+                name="🪙 Cryptocurrencies",
+                value=crypto_list if crypto_list else "Bitcoin, Ethereum, Cardano, Solana, Ripple, Dogecoin, Litecoin, Polkadot, Avalanche, Polygon, Arbitrum",
+                inline=True
+            )
+            
+            indo_stocks = ""
+            for name, symbol in list(self.indonesian_stocks.items())[:8]:
+                indo_stocks += f"• {name.upper()} ({symbol})\n"
+            
+            embed.add_field(
+                name="🇮🇩 Indonesian Stocks",
+                value=indo_stocks if indo_stocks else "BBRI, BBCA, ASII, TLKM, BMRI, BNGA, UNVR, ADRO",
+                inline=True
+            )
+            
+            us_stocks = ""
+            for name, symbol in list(self.us_stocks.items())[:8]:
+                us_stocks += f"• {name.upper()} ({symbol})\n"
+            
+            embed.add_field(
+                name="🇺🇸 US Stocks",
+                value=us_stocks if us_stocks else "AAPL, GOOGL, MSFT, AMZN, META, NVDA, TSLA, AMG",
+                inline=True
             )
             
             embed.add_field(
                 name="📝 Examples",
-                value="`/price bitcoin`\n`/price eth`\n`/price cardano`\n`/price doge`",
+                value="`/price bitcoin`\n`/price eth`\n`/price bbri`\n`/price aapl`\n`/price BBCA.IDX`",
                 inline=False
             )
             
@@ -206,85 +297,156 @@ class CryptoPrice(commands.Cog):
         await interaction.response.defer()
         
         try:
-            result, error = await self.get_crypto_price(cryptocurrency)
+            # Detect asset type
+            asset_type, symbol = self.detect_asset_type(asset)
             
-            if error:
+            if asset_type == "crypto":
+                result, error = await self.get_crypto_price(symbol)
+                
+                if error:
+                    embed = discord.Embed(
+                        title="❌ Crypto Lookup Failed",
+                        description=error,
+                        color=discord.Color.red()
+                    )
+                    embed.add_field(name="🔍 Searched", value=asset, inline=False)
+                    embed.add_field(
+                        name="💡 Need Help?",
+                        value="Type `/price list` to see all supported assets",
+                        inline=False
+                    )
+                    await interaction.followup.send(embed=embed)
+                    return
+                
+                # Format crypto output
+                crypto_name = asset.capitalize()
+                price = result["price"]
+                change_24h = result["change_24h"]
+                
+                if change_24h > 0:
+                    color = discord.Color.green()
+                    change_emoji = "📈"
+                elif change_24h < 0:
+                    color = discord.Color.red()
+                    change_emoji = "📉"
+                else:
+                    color = discord.Color.greyple()
+                    change_emoji = "➡️"
+                
                 embed = discord.Embed(
-                    title="❌ Price Lookup Failed",
-                    description=error,
-                    color=discord.Color.red()
+                    title=f"💰 {crypto_name} Price",
+                    description=f"**{self.format_price(price)}**",
+                    color=color,
+                    timestamp=discord.utils.utcnow()
                 )
-                embed.add_field(name="🔍 Searched", value=cryptocurrency, inline=False)
+                
                 embed.add_field(
-                    name="💡 Need Help?",
-                    value="Type `/price list` to see all supported cryptocurrencies",
-                    inline=False
-                )
-                await interaction.followup.send(embed=embed)
-                return
-            
-            # Build result embed
-            crypto_name = cryptocurrency.capitalize()
-            price = result["price"]
-            change_24h = result["change_24h"]
-            
-            # Determine color based on change
-            if change_24h > 0:
-                color = discord.Color.green()
-                change_emoji = "📈"
-            elif change_24h < 0:
-                color = discord.Color.red()
-                change_emoji = "📉"
-            else:
-                color = discord.Color.greyple()
-                change_emoji = "➡️"
-            
-            embed = discord.Embed(
-                title=f"💰 {crypto_name} Price",
-                description=f"**{self.format_price(price)}**",
-                color=color,
-                timestamp=discord.utils.utcnow()
-            )
-            
-            # Price change
-            embed.add_field(
-                name=f"{change_emoji} 24h Change",
-                value=f"{change_24h:+.2f}%",
-                inline=True
-            )
-            
-            # Market cap
-            if result["market_cap"] > 0:
-                market_cap_str = f"${result['market_cap']:,.0f}"
-                if result['market_cap'] >= 1e9:
-                    market_cap_str = f"${result['market_cap']/1e9:.2f}B"
-                elif result['market_cap'] >= 1e6:
-                    market_cap_str = f"${result['market_cap']/1e6:.2f}M"
-                embed.add_field(
-                    name="📊 Market Cap",
-                    value=market_cap_str,
+                    name=f"{change_emoji} 24h Change",
+                    value=f"{change_24h:+.2f}%",
                     inline=True
                 )
+                
+                if result["market_cap"] > 0:
+                    market_cap_str = f"${result['market_cap']:,.0f}"
+                    if result['market_cap'] >= 1e9:
+                        market_cap_str = f"${result['market_cap']/1e9:.2f}B"
+                    elif result['market_cap'] >= 1e6:
+                        market_cap_str = f"${result['market_cap']/1e6:.2f}M"
+                    embed.add_field(
+                        name="📊 Market Cap",
+                        value=market_cap_str,
+                        inline=True
+                    )
+                
+                if result["volume_24h"] > 0:
+                    volume_str = f"${result['volume_24h']:,.0f}"
+                    if result['volume_24h'] >= 1e9:
+                        volume_str = f"${result['volume_24h']/1e9:.2f}B"
+                    embed.add_field(
+                        name="📈 24h Volume",
+                        value=volume_str,
+                        inline=True
+                    )
+                
+                source_info = result['source']
+                if result['source'] == 'CoinGecko':
+                    source_info = "CoinGecko (Primary)"
+                elif result['source'] == 'CryptoCompare':
+                    source_info = "CryptoCompare (Fallback)"
+                
+                embed.set_footer(text=f"Data from {source_info}")
             
-            # 24h Volume
-            if result["volume_24h"] > 0:
-                volume_str = f"${result['volume_24h']:,.0f}"
-                if result['volume_24h'] >= 1e9:
-                    volume_str = f"${result['volume_24h']/1e9:.2f}B"
+            elif asset_type == "stock":
+                result = await self.fetch_stock(symbol)
+                
+                if not result["success"]:
+                    embed = discord.Embed(
+                        title="❌ Stock Lookup Failed",
+                        description=result.get("error", "Unable to fetch stock data"),
+                        color=discord.Color.red()
+                    )
+                    embed.add_field(name="📊 Symbol", value=symbol, inline=False)
+                    embed.add_field(
+                        name="💡 Need Help?",
+                        value="Type `/price list` to see all supported stocks",
+                        inline=False
+                    )
+                    await interaction.followup.send(embed=embed)
+                    return
+                
+                # Format stock output
+                price = result["price"]
+                change = result["change"]
+                change_percent = result["change_percent"]
+                
+                if change_percent > 0:
+                    color = discord.Color.green()
+                    change_emoji = "📈"
+                elif change_percent < 0:
+                    color = discord.Color.red()
+                    change_emoji = "📉"
+                else:
+                    color = discord.Color.greyple()
+                    change_emoji = "➡️"
+                
+                embed = discord.Embed(
+                    title=f"📊 {symbol} Price",
+                    description=f"**${price:,.2f}**",
+                    color=color,
+                    timestamp=discord.utils.utcnow()
+                )
+                
                 embed.add_field(
-                    name="📈 24h Volume",
-                    value=volume_str,
+                    name=f"{change_emoji} Change",
+                    value=f"{change:+.2f} ({change_percent:+.2f}%)",
                     inline=True
                 )
-            
-            # Data source
-            source_info = result['source']
-            if result['source'] == 'CoinGecko':
-                source_info = "CoinGecko (Primary)"
-            elif result['source'] == 'CryptoCompare':
-                source_info = "CryptoCompare (Fallback)"
-            
-            embed.set_footer(text=f"Data from {source_info} | Last updated")
+                
+                embed.add_field(
+                    name="📈 Open",
+                    value=f"${result['open']:,.2f}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🔝 High",
+                    value=f"${result['high']:,.2f}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🔻 Low",
+                    value=f"${result['low']:,.2f}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="⏹️ Prev Close",
+                    value=f"${result['previous_close']:,.2f}",
+                    inline=True
+                )
+                
+                embed.set_footer(text=f"Data from {result['source']}")
             
             await interaction.followup.send(embed=embed)
         
