@@ -16,20 +16,25 @@ class SocialStats(commands.Cog):
     async def fetch_instagram_stats(self, username: str) -> dict:
         """Fetch Instagram user stats from Instagram Statistics API (Rapid API)"""
         try:
+            # Validate input
+            if not username or not isinstance(username, str):
+                return {"success": False, "error": "Username cannot be empty"}
+            
             headers = {
                 "x-rapidapi-key": self.rapidapi_key,
                 "x-rapidapi-host": "instagram-statistics-api.p.rapidapi.com"
             }
             
-            # Use search endpoint with perPage parameter
-            params = {"ig_username": username, "perPage": 20}
+            # Use search endpoint with balanced perPage for speed/accuracy
+            # perPage: 30 takes ~5s, perPage: 100 takes ~11s
+            params = {"ig_username": username, "perPage": 30}
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     "https://instagram-statistics-api.p.rapidapi.com/search",
                     params=params,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=10)
+                    timeout=aiohttp.ClientTimeout(total=15)
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -38,24 +43,48 @@ class SocialStats(commands.Cog):
                         if "data" in data and "meta" in data and data["meta"]["code"] == 200:
                             # Find exact username match in results
                             user_data = None
+                            partial_matches = []  # Store similar usernames
+                            
                             for user in data["data"]:
-                                if user.get("screenName", "").lower() == username.lower():
+                                # Handle None values properly
+                                screen_name = user.get("screenName") or ""
+                                user_screen_name = screen_name.lower()
+                                search_lower = username.lower() if username else ""
+                                
+                                # Exact match
+                                if user_screen_name and user_screen_name == search_lower:
                                     user_data = user
                                     break
+                                # Partial match (contains search term)
+                                elif search_lower and (search_lower in user_screen_name or user_screen_name.startswith(search_lower)):
+                                    partial_matches.append(user)
                             
-                            if not user_data:
-                                return {"success": False, "error": "User not found"}
+                            # Return exact match if found
+                            if user_data:
+                                return {
+                                    "success": True,
+                                    "username": user_data.get("screenName") or username,
+                                    "name": user_data.get("name") or username,
+                                    "followers": user_data.get("usersCount", 0),
+                                    "profile_pic": user_data.get("image", ""),
+                                    "is_verified": user_data.get("verified", False),
+                                    "url": user_data.get("url", f"https://instagram.com/{username}"),
+                                    "source": "Instagram"
+                                }
                             
-                            return {
-                                "success": True,
-                                "username": user_data.get("screenName", username),
-                                "name": user_data.get("name", username),
-                                "followers": user_data.get("usersCount", 0),
-                                "profile_pic": user_data.get("image", ""),
-                                "is_verified": user_data.get("verified", False),
-                                "url": user_data.get("url", f"https://instagram.com/{username}"),
-                                "source": "Instagram"
-                            }
+                            # Return partial matches if found
+                            elif partial_matches:
+                                matches_list = [u.get("screenName", "") for u in partial_matches[:5] if u.get("screenName")]
+                                return {
+                                    "success": False,
+                                    "error": f"User '@{username}' not found",
+                                    "suggestions": matches_list if matches_list else None
+                                }
+                            
+                            # No matches at all
+                            else:
+                                return {"success": False, "error": f"User '@{username}' not found"}
+                        
                         return {"success": False, "error": "Invalid response format"}
                     else:
                         return {"success": False, "error": f"API error: {resp.status}"}
@@ -81,7 +110,7 @@ class SocialStats(commands.Cog):
                     "https://tiktok-api11.p.rapidapi.com/user/info",
                     params=params,
                     headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=10)
+                    timeout=aiohttp.ClientTimeout(total=15)
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -151,6 +180,16 @@ class SocialStats(commands.Cog):
                     description=result.get("error", "Unable to fetch data"),
                     color=discord.Color.red()
                 )
+                
+                # Show suggestions if available
+                if result.get("suggestions"):
+                    suggestions_text = "\n".join([f"• @{u}" for u in result["suggestions"]])
+                    embed.add_field(
+                        name="💡 Did you mean?",
+                        value=suggestions_text,
+                        inline=False
+                    )
+                
                 await interaction.followup.send(embed=embed)
                 return
             
