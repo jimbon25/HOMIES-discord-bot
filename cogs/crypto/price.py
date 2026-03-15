@@ -6,6 +6,7 @@ import asyncio
 import os
 from datetime import datetime
 import logging
+import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +15,6 @@ class CryptoPrice(commands.Cog):
         self.bot = bot
         self.coingecko_url = "https://api.coingecko.com/api/v3"
         self.cryptocompare_url = "https://min-api.cryptocompare.com/data"
-        self.finnhub_url = "https://finnhub.io/api/v1"
-        self.finnhub_api_key = os.getenv('FINNHUB_API_KEY')
         
         # Supported cryptocurrencies mapping
         # Maps user input to CoinGecko ID and CryptoCompare symbol
@@ -44,18 +43,18 @@ class CryptoPrice(commands.Cog):
             "arb": {"gecko": "arbitrum", "cc": "ARB"},
         }
         
-        # Indonesian stocks (IDX)
+        # Indonesian stocks (IDX) - using Yahoo Finance format with .JK suffix
         self.indonesian_stocks = {
-            "bbri": "BBRI.IDX",
-            "bbca": "BBCA.IDX",
-            "asii": "ASII.IDX",
-            "tlkm": "TLKM.IDX",
-            "bmri": "BMRI.IDX",
-            "bnga": "BNGA.IDX",
-            "unvr": "UNVR.IDX",
-            "adro": "ADRO.IDX",
-            "intp": "INTP.IDX",
-            "jsmr": "JSMR.IDX",
+            "bbri": "BBRI.JK",
+            "bbca": "BBCA.JK",
+            "asii": "ASII.JK",
+            "tlkm": "TLKM.JK",
+            "bmri": "BMRI.JK",
+            "bnga": "BNGA.JK",
+            "unvr": "UNVR.JK",
+            "adro": "ADRO.JK",
+            "intp": "INTP.JK",
+            "jsmr": "JSMR.JK",
         }
         
         # Popular US stocks
@@ -70,42 +69,50 @@ class CryptoPrice(commands.Cog):
             "amg": "AMG",
         }
     
-    async def fetch_stock(self, symbol: str) -> dict:
-        """Fetch stock price from Finnhub"""
+    def fetch_stock(self, symbol: str) -> dict:
+        """Fetch stock price from Yahoo Finance using yfinance (supports US & IDX stocks)"""
         try:
-            params = {
-                "symbol": symbol,
-                "token": self.finnhub_api_key
-            }
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"{self.finnhub_url}/quote",
-                    params=params,
-                    timeout=aiohttp.ClientTimeout(total=5)
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        
-                        # Check if we got valid data
-                        if "c" in data and data["c"] > 0:
-                            return {
-                                "success": True,
-                                "price": float(data.get("c", 0)),
-                                "change": float(data.get("d", 0)),  # absolute change
-                                "change_percent": float(data.get("dp", 0)),  # percent change
-                                "high": float(data.get("h", 0)),
-                                "low": float(data.get("l", 0)),
-                                "open": float(data.get("o", 0)),
-                                "previous_close": float(data.get("pc", 0)),
-                                "timestamp": data.get("t", 0),
-                                "source": "Finnhub"
-                            }
-                        return {"success": False, "error": "Invalid price data"}
-                    else:
-                        return {"success": False, "error": f"API returned {resp.status}"}
+            # Get current price - try different fields for compatibility
+            price = info.get('currentPrice') or info.get('regularMarketPrice', None)
+            
+            if price is None or price == 0:
+                return {"success": False, "error": "Unable to fetch stock price"}
+            
+            # Get latest historical data for OHLC
+            hist = ticker.history(period='5d')
+            
+            if hist.empty:
+                return {"success": False, "error": "No historical data available"}
+            
+            latest = hist.iloc[-1]
+            previous = hist.iloc[-2] if len(hist) > 1 else None
+            
+            # Calculate change
+            open_price = float(latest.get('Open', 0))
+            close_price = float(latest.get('Close', price))
+            high_price = float(latest.get('High', price))
+            low_price = float(latest.get('Low', price))
+            prev_close = float(previous.get('Close', open_price)) if previous is not None else open_price
+            
+            change = close_price - prev_close
+            change_percent = (change / prev_close * 100) if prev_close > 0 else 0
+            
+            return {
+                "success": True,
+                "price": float(price),
+                "change": change,
+                "change_percent": change_percent,
+                "high": high_price,
+                "low": low_price,
+                "open": open_price,
+                "previous_close": prev_close,
+                "source": "Yahoo Finance"
+            }
         except Exception as e:
-            logger.error(f"Finnhub error: {e}")
+            logger.error(f"yfinance error: {e}")
             return {"success": False, "error": str(e)}
     
     async def fetch_coingecko(self, crypto_id: str) -> dict:
@@ -377,7 +384,7 @@ class CryptoPrice(commands.Cog):
                 embed.set_footer(text=f"Data from {source_info}")
             
             elif asset_type == "stock":
-                result = await self.fetch_stock(symbol)
+                result = self.fetch_stock(symbol)
                 
                 if not result["success"]:
                     embed = discord.Embed(
