@@ -383,14 +383,6 @@ class CryptoPrice(commands.Cog):
                         value=volume_str,
                         inline=True
                     )
-                
-                source_info = result['source']
-                if result['source'] == 'CoinGecko':
-                    source_info = "CoinGecko (Primary)"
-                elif result['source'] == 'CryptoCompare':
-                    source_info = "CryptoCompare (Fallback)"
-                
-                embed.set_footer(text=f"Data from {source_info}")
             
             elif asset_type == "stock":
                 result = self.fetch_stock(symbol)
@@ -461,8 +453,6 @@ class CryptoPrice(commands.Cog):
                     value=f"${result['previous_close']:,.2f}",
                     inline=True
                 )
-                
-                embed.set_footer(text=f"Data from {result['source']}")
             
             await interaction.followup.send(embed=embed)
         
