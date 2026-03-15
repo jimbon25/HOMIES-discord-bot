@@ -147,6 +147,62 @@ class CryptoPrice(commands.Cog):
     async def price_command(self, interaction: discord.Interaction, cryptocurrency: str):
         """Get current cryptocurrency price with multi-source fallback"""
         
+        # Check if user wants to see supported cryptos
+        if cryptocurrency.lower() in ["list", "support", "supported", "help"]:
+            embed = discord.Embed(
+                title="💰 Supported Cryptocurrencies",
+                description="Use `/price <name>` to get current price",
+                color=discord.Color.gold()
+            )
+            
+            # Group cryptos by category
+            cryptos_list = []
+            for name, data in self.crypto_ids.items():
+                if name not in [v["gecko"] for v in self.crypto_ids.values() if isinstance(v, dict)]:
+                    # Only show user-friendly names, not duplicates
+                    continue
+                gecko_id = data["gecko"]
+                cc_symbol = data["cc"]
+                if (gecko_id, cc_symbol) not in [(d["gecko"], d["cc"]) for _, d in list(self.crypto_ids.items())[:len(self.crypto_ids)//2]]:
+                    continue
+            
+            # Better way: group by what we find
+            seen = set()
+            grouped = {}
+            for name, data in sorted(self.crypto_ids.items()):
+                if isinstance(data, dict):
+                    gecko_id = data["gecko"]
+                    cc_symbol = data["cc"]
+                    key = (gecko_id, cc_symbol)
+                    if key not in seen:
+                        seen.add(key)
+                        if gecko_id not in grouped:
+                            grouped[gecko_id] = []
+                        grouped[gecko_id].append((name, cc_symbol))
+            
+            # Format output
+            crypto_text = ""
+            for gecko_id in sorted(grouped.keys()):
+                names = grouped[gecko_id]
+                name_aliases = ", ".join([n[0].capitalize() for n in names])
+                symbol = names[0][1]
+                crypto_text += f"• **{name_aliases}** `{symbol}`\n"
+            
+            embed.add_field(
+                name="Available Coins",
+                value=crypto_text,
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📝 Examples",
+                value="`/price bitcoin`\n`/price eth`\n`/price cardano`\n`/price doge`",
+                inline=False
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
         await interaction.response.defer()
         
         try:
@@ -160,8 +216,8 @@ class CryptoPrice(commands.Cog):
                 )
                 embed.add_field(name="🔍 Searched", value=cryptocurrency, inline=False)
                 embed.add_field(
-                    name="💡 Supported Cryptos",
-                    value="Bitcoin, Ethereum, Cardano, Solana, Ripple, Dogecoin, Litecoin, Polkadot, Avalanche, Polygon, Arbitrum",
+                    name="💡 Need Help?",
+                    value="Type `/price list` to see all supported cryptocurrencies",
                     inline=False
                 )
                 await interaction.followup.send(embed=embed)
