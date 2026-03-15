@@ -111,6 +111,22 @@ class HelpCommand(commands.Cog):
             inline=False
         )
         
+        # Price Tracking
+        embed.add_field(
+            name="Price Tracking",
+            value="`/price <symbol>` - Get crypto or stock price (BTC, ETH, AAPL, GOOGL, etc)\n"
+                  "`/price list` - View all supported assets with symbols",
+            inline=False
+        )
+        
+        # Member Management
+        embed.add_field(
+            name="Member Management",
+            value="`/nickname set <@user> <nickname>` - Set member nickname (manage_nicknames required)\n"
+                  "`/nickname clear <@user>` - Remove member nickname (manage_nicknames required)",
+            inline=False
+        )
+        
         # Custom Messages
         embed.add_field(
             name="Custom Prefix Commands",
