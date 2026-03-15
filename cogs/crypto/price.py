@@ -248,11 +248,12 @@ class CryptoPrice(commands.Cog):
         # Check if user wants to see supported assets
         if asset.lower() in ["list", "support", "supported", "help"]:
             embed = discord.Embed(
-                title="💰 Supported Assets",
-                description="Use `/price <name>` to get current price",
+                title="💰 Supported Assets - Price Tracker",
+                description="Get live prices for crypto, US stocks, and Indonesian IDX stocks",
                 color=discord.Color.gold()
             )
             
+            # Cryptocurrencies list
             crypto_list = ""
             seen = set()
             for name, data in sorted(self.crypto_ids.items()):
@@ -261,42 +262,50 @@ class CryptoPrice(commands.Cog):
                     key = gecko_id
                     if key not in seen:
                         seen.add(key)
-                        crypto_list += f"• {name.upper()}\n"
-                if len(crypto_list.split("\n")) > 10:
-                    crypto_list += "• ...\n"
-                    break
+                        crypto_list += f"• {name.upper()}"
+                        if len(crypto_list.split("\n")) >= 6:
+                            break
+                        crypto_list += "\n"
             
             embed.add_field(
-                name="🪙 Cryptocurrencies",
-                value=crypto_list if crypto_list else "Bitcoin, Ethereum, Cardano, Solana, Ripple, Dogecoin, Litecoin, Polkadot, Avalanche, Polygon, Arbitrum",
-                inline=True
+                name="🪙 Cryptocurrencies (15+ supported)",
+                value=crypto_list + "\n• ... and more",
+                inline=False
             )
             
+            # Indonesian stocks
             indo_stocks = ""
-            for name, symbol in list(self.indonesian_stocks.items())[:8]:
-                indo_stocks += f"• {name.upper()} ({symbol})\n"
+            for i, (name, symbol) in enumerate(list(self.indonesian_stocks.items())):
+                indo_stocks += f"• {name.upper()} ({symbol})"
+                if i < len(self.indonesian_stocks) - 1:
+                    indo_stocks += "\n"
             
             embed.add_field(
-                name="🇮🇩 Indonesian Stocks",
-                value=indo_stocks if indo_stocks else "BBRI, BBCA, ASII, TLKM, BMRI, BNGA, UNVR, ADRO",
-                inline=True
+                name="🇮🇩 Indonesian Stocks (IDX)",
+                value=indo_stocks,
+                inline=False
             )
             
+            # US stocks
             us_stocks = ""
-            for name, symbol in list(self.us_stocks.items())[:8]:
+            for name, symbol in list(self.us_stocks.items()):
                 us_stocks += f"• {name.upper()} ({symbol})\n"
+            us_stocks = us_stocks.strip()
             
             embed.add_field(
                 name="🇺🇸 US Stocks",
-                value=us_stocks if us_stocks else "AAPL, GOOGL, MSFT, AMZN, META, NVDA, TSLA, AMG",
-                inline=True
-            )
-            
-            embed.add_field(
-                name="📝 Examples",
-                value="`/price bitcoin`\n`/price eth`\n`/price bbri`\n`/price aapl`\n`/price BBCA.IDX`",
+                value=us_stocks,
                 inline=False
             )
+            
+            # Example outputs
+            embed.add_field(
+                name="📝 Example Commands",
+                value="`/price bitcoin` → Crypto with 24h change & market cap\n`/price bbri` → IDX stock with OHLC data\n`/price aapl` → US stock with OHLC data",
+                inline=False
+            )
+            
+            embed.set_footer(text="All prices are live • Supports 33+ assets • Free tier")
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
