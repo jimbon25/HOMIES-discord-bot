@@ -105,6 +105,7 @@ class DashboardCog(commands.Cog):
             print(f"Error updating guild stats: {e}")
     
     @app_commands.command(name="serverhealth", description="Show main server health dashboard")
+    @app_commands.checks.has_permissions(administrator=True)
     async def serverhealth(self, interaction: discord.Interaction):
         """Display main health dashboard"""
         await interaction.response.defer()
@@ -127,6 +128,7 @@ class DashboardCog(commands.Cog):
             await interaction.followup.send(f"❌ Error loading dashboard: {str(e)}", ephemeral=True)
     
     @app_commands.command(name="activity", description="Show activity dashboard")
+    @app_commands.checks.has_permissions(administrator=True)
     async def activity(self, interaction: discord.Interaction):
         """Display activity dashboard"""
         await interaction.response.defer()
@@ -148,6 +150,7 @@ class DashboardCog(commands.Cog):
         except Exception as e:
             await interaction.followup.send(f"❌ Error loading dashboard: {str(e)}", ephemeral=True)
     
+    @app_commands.checks.has_permissions(administrator=True)
     @app_commands.command(name="stats", description="Show quick server statistics")
     async def stats(self, interaction: discord.Interaction):
         """Quick statistics"""
