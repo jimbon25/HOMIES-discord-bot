@@ -98,7 +98,7 @@ class Nickname(commands.Cog):
                 embed.add_field(name="Previous", value=old_nickname, inline=True)
                 embed.add_field(name="New", value=nickname, inline=True)
                 
-                await interaction.response.send_message(embed=embed)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 logger.info(f"{interaction.user} changed {user}'s nickname from '{old_nickname}' to '{nickname}'")
             
             elif action_lower == "clear":
@@ -112,7 +112,7 @@ class Nickname(commands.Cog):
                 )
                 embed.add_field(name="Previous Nickname", value=old_nickname, inline=False)
                 
-                await interaction.response.send_message(embed=embed)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 logger.info(f"{interaction.user} cleared {user}'s nickname (was: '{old_nickname}')")
             
             else:

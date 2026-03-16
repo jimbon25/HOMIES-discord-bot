@@ -211,7 +211,7 @@ class SystemMonitor(commands.Cog):
             # Footer with update time
             embed.set_footer(text="Updated at")
             
-            await interaction.followup.send(embed=embed)
+            await interaction.followup.send(embed=embed, ephemeral=True)
         
         except Exception as e:
             embed = discord.Embed(

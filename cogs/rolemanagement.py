@@ -56,7 +56,7 @@ class RoleManagement(commands.Cog):
                 description=f"Added **{role.mention}** to **{member.mention}**",
                 color=discord.Color.green()
             )
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
             logger.error(f"Error adding role: {e}")
             embed = discord.Embed(
@@ -111,7 +111,7 @@ class RoleManagement(commands.Cog):
                 description=f"Removed **{role.mention}** from **{member.mention}**",
                 color=discord.Color.green()
             )
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
             logger.error(f"Error removing role: {e}")
             embed = discord.Embed(

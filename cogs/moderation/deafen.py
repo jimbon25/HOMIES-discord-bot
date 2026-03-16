@@ -63,7 +63,7 @@ class DeafenModeration(commands.Cog):
                 description=f"**{member.mention}** has been deafened",
                 color=discord.Color.green()
             )
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
             logger.error(f"Error deafening member: {e}")
             embed = discord.Embed(
