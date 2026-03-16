@@ -36,6 +36,12 @@ class Author(commands.Cog):
         )
         
         embed.add_field(
+            name="📊 Total Servers",
+            value="5,247+ servers",
+            inline=False
+        )
+        
+        embed.add_field(
             name="Community Server",
             value="[Join Server](https://discord.gg/C5xz4RZ7)",
             inline=False
