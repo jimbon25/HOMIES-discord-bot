@@ -1,14 +1,15 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+import os
 
 class Author(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="author", description="Show bot and author information")
-    async def author_info(self, interaction: discord.Interaction):
-        """Menampilkan informasi bot dan author."""
+    @app_commands.command(name="bot", description="Show bot and author information")
+    async def bot_info(self, interaction: discord.Interaction):
+        """Menampilkan informasi bot dan author dengan owner clickable."""
         embed = discord.Embed(
             title="Bot Information",
             color=discord.Color.blue()
@@ -20,14 +21,22 @@ class Author(commands.Cog):
             inline=False
         )
         
+        # Fetch owner dari OWNER_ID
+        try:
+            owner_id = int(os.getenv("OWNER_ID"))
+            owner = await self.bot.fetch_user(owner_id)
+            owner_mention = owner.mention
+        except:
+            owner_mention = "@nikdi99"
+        
         embed.add_field(
             name="Author",
-            value="@nikdi99",
+            value=owner_mention,
             inline=False
         )
         
         embed.add_field(
-            name="Community Server (BACKUP)",
+            name="Community Server",
             value="[Join Server](https://discord.gg/C5xz4RZ7)",
             inline=False
         )

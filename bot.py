@@ -154,13 +154,20 @@ async def on_ready():
         except Exception as e:
             logger.error(f"❌ Error auto-leaving guild: {e}")
     
-    # Set status teks di profile bot - Edit text dibawah:
+    # Set status teks di profile bot - Fetch owner name dari OWNER_ID
     # Format: Playing, Listening, Watching, Streaming
+    try:
+        owner_id = int(os.getenv("OWNER_ID"))
+        owner = await bot.fetch_user(owner_id)
+        owner_name = owner.name
+    except:
+        owner_name = "nikdi99"  # Fallback jika fetch gagal
+    
     await bot.change_presence(
         status=discord.Status.online,
         activity=discord.Activity(
             type=discord.ActivityType.playing,
-            name="W nikdi99 /help for commands"  # <- Edit text ini
+            name=f"Author: {owner_name} | /help"  # <- Owner name di-fetch otomatis
         )
     )
 

@@ -151,7 +151,7 @@ class HelpCommand(commands.Cog):
         # Bot Info
         embed.add_field(
             name="Bot Information",
-            value="`/author` - Bot & author information with social links\n"
+            value="`/bot` - Bot & author information with social links\n"
                   "`/test` - Test bot response (miaw)",
             inline=False
         )

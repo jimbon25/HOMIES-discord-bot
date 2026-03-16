@@ -181,7 +181,7 @@ discord-announcer/
 - `/createembed` - Create custom embeds with modal
 
 ### Bot Info
-- `/author` - Bot and author information
+- `/bot` - Bot and author information
 - `/ping` - Check bot latency
 - `/test` - Test bot response
 
