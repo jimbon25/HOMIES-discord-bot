@@ -8,7 +8,7 @@ class Author(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="bot", description="Show bot and author information")
-    async def bot_info(self, interaction: discord.Interaction):
+    async def show_bot_info(self, interaction: discord.Interaction):
         """Menampilkan informasi bot dan author dengan owner clickable."""
         embed = discord.Embed(
             title="Bot Information",
