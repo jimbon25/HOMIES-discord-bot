@@ -150,11 +150,13 @@ discord-announcer/
 - `/unmute <member>` - Remove timeout (admin)
 
 ### Voice Channels
-- `/vc rename <name>` - Rename your voice channel
+- `/vc rename <name> [#channel]` - Rename your voice channel
 - `/vc limit <number>` - Set user limit (0-99)
-- `/vc lock` - Lock/unlock channel
+- `/vc lock <lock|unlock> [#channel]` - Lock/unlock channel
 - `/vc claim` - Claim channel ownership
-- `/vc info` - View channel information
+- `/vc info [#channel]` - View channel information
+- `/vc kick <@user> [#channel]` - Kick user from VC (owner/admin only)
+- `/vc mute <mute|unmute> [@user] [#channel]` - Mute member(s) (owner/admin only)
 
 ### Bot Voice Management
 - `/stayafk join` - Bot joins and stays in your voice channel
@@ -170,6 +172,7 @@ discord-announcer/
 - `/stats` - Quick server statistics
 - `/serverinfo` - Full server details
 - `/system` - System resource monitoring (owner-only)
+- `/inviteinfo <invite>` - Analyze Discord server invite
 
 ### User Tools
 - `/userinfo <@user>` - User profile information

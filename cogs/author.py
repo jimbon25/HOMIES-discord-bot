@@ -10,12 +10,13 @@ class Author(commands.Cog):
     @app_commands.command(name="bot", description="Show bot and author information")
     async def show_bot_info(self, interaction: discord.Interaction):
         """Menampilkan informasi bot dan author dengan owner clickable."""
-        embed = discord.Embed(
+        # Embed 1: Bot Information
+        embed1 = discord.Embed(
             title="Bot Information",
             color=discord.Color.blue()
         )
         
-        embed.add_field(
+        embed1.add_field(
             name="Bot Name",
             value=f"{self.bot.user.name}",
             inline=False
@@ -29,33 +30,38 @@ class Author(commands.Cog):
         except:
             owner_mention = "@nikdi99"
         
-        embed.add_field(
+        embed1.add_field(
             name="Author",
             value=owner_mention,
             inline=False
         )
         
-        embed.add_field(
-            name="📊 Total Servers",
+        embed1.add_field(
+            name="Total Servers",
             value="5,247+ servers",
             inline=False
         )
         
-        embed.add_field(
+        embed1.set_footer(text=f"Bot ID: {self.bot.user.id}")
+        
+        # Embed 2: Links
+        embed2 = discord.Embed(
+            color=discord.Color.blue()
+        )
+        
+        embed2.add_field(
             name="Community Server",
             value="[Join Server](https://discord.gg/C5xz4RZ7)",
             inline=False
         )
         
-        embed.add_field(
+        embed2.add_field(
             name="Social Media",
             value="[Facebook](https://facebook.com/iv.dimas) | [Instagram](https://instagram.com/dimasladty)",
             inline=False
         )
         
-        embed.set_footer(text=f"Bot ID: {self.bot.user.id}")
-        
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embeds=[embed1, embed2])
 
 async def setup(bot):
     await bot.add_cog(Author(bot))

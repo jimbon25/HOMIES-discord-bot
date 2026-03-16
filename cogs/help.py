@@ -36,11 +36,13 @@ class HelpCommand(commands.Cog):
         # Voice Channel Management
         embed.add_field(
             name="Voice Channels",
-            value="`/vc rename <name>` - Rename your voice channel\n"
+            value="`/vc rename <name> [#channel]` - Rename your voice channel\n"
                   "`/vc limit <number>` - Set user limit (0-99)\n"
-                  "`/vc lock` - Lock/unlock channel access\n"
+                  "`/vc lock <lock|unlock> [#channel]` - Lock/unlock channel access\n"
                   "`/vc claim` - Claim channel ownership\n"
-                  "`/vc info` - View channel information",
+                  "`/vc info [#channel]` - View channel information\n"
+                  "`/vc kick <@user> [#channel]` - Kick user from VC (owner/admin only)\n"
+                  "`/vc mute <mute|unmute> [@user] [#channel]` - Mute member(s) (owner/admin only)",
             inline=False
         )
         
@@ -69,7 +71,8 @@ class HelpCommand(commands.Cog):
                   "`/stats` - Quick server statistics\n"
                   "`/serverinfo` - Full server details\n"
                   "`/userinfo <@user>` - User profile information\n"
-                  "`/avatar <@user>` - View user avatar",
+                  "`/avatar <@user>` - View user avatar\n"
+                  "`/inviteinfo <invite>` - Analyze Discord server invite",
             inline=False
         )
         

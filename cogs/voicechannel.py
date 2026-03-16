@@ -101,22 +101,26 @@ class VoiceChannelManager(commands.Cog):
     vc_group = app_commands.Group(name="vc", description="Voice channel management commands")
     
     @vc_group.command(name="rename", description="Rename your voice channel")
-    @app_commands.describe(name="New channel name (max 100 characters)")
-    async def vc_rename(self, interaction: discord.Interaction, name: str):
+    @app_commands.describe(name="New channel name (max 100 characters)", channel="Target voice channel (leave empty for your current channel)")
+    async def vc_rename(self, interaction: discord.Interaction, name: str, channel: discord.VoiceChannel = None):
         """Rename voice channel"""
-        # Check if user in voice channel
-        if not interaction.user.voice or not interaction.user.voice.channel:
-            await interaction.response.send_message(
-                "You must be in a voice channel to use this command",
-                ephemeral=True
-            )
-            return
+        # Get channel - use provided channel or user's current channel
+        if channel is None:
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                embed = discord.Embed(
+                    title="❌ No Channel Specified",
+                    description="You must be in a voice channel or specify a channel",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            channel = interaction.user.voice.channel
         
         # Check cooldown (Discord rate limit: 2 renames per 10 minutes)
         is_cooldown, remaining = self.check_rename_cooldown(interaction.user.id)
         if is_cooldown:
             embed = discord.Embed(
-                title="Cooldown Active",
+                title="⏳ Cooldown Active",
                 description=f"You can rename again in {remaining} seconds",
                 color=discord.Color.red()
             )
@@ -128,23 +132,25 @@ class VoiceChannelManager(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
-        channel = interaction.user.voice.channel
-        
         # Check permissions
         if not (self.is_channel_owner(interaction.user.id, channel.id) or 
                 interaction.user.guild_permissions.administrator):
-            await interaction.response.send_message(
-                "You don't have permission to rename this channel",
-                ephemeral=True
+            embed = discord.Embed(
+                title="❌ No Permission",
+                description="Only channel owner or server admin can rename this channel",
+                color=discord.Color.red()
             )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
         # Validate name length
         if len(name) > 100:
-            await interaction.response.send_message(
-                "Channel name must be 100 characters or less",
-                ephemeral=True
+            embed = discord.Embed(
+                title="❌ Name Too Long",
+                description="Channel name must be 100 characters or less",
+                color=discord.Color.red()
             )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         
         try:
@@ -160,7 +166,7 @@ class VoiceChannelManager(commands.Cog):
                 self.save_vc_data(data)
             
             embed = discord.Embed(
-                title="Channel Renamed",
+                title="✅ Channel Renamed",
                 description=f"Voice channel renamed to **{name}**",
                 color=discord.Color.green()
             )
@@ -222,8 +228,8 @@ class VoiceChannelManager(commands.Cog):
             )
     
     @vc_group.command(name="lock", description="Lock or unlock your voice channel")
-    @app_commands.describe(action="Lock action: lock or unlock")
-    async def vc_lock(self, interaction: discord.Interaction, action: str):
+    @app_commands.describe(action="Lock action: lock or unlock", channel="Target voice channel (leave empty for your current channel)")
+    async def vc_lock(self, interaction: discord.Interaction, action: str, channel: discord.VoiceChannel = None):
         """Lock/unlock voice channel"""
         # Validate action
         if action.lower() not in ["lock", "unlock"]:
@@ -233,15 +239,17 @@ class VoiceChannelManager(commands.Cog):
             )
             return
         
-        # Check if user in voice channel
-        if not interaction.user.voice or not interaction.user.voice.channel:
-            await interaction.response.send_message(
-                "❌ You must be in a voice channel to use this command",
-                ephemeral=True
-            )
-            return
-        
-        channel = interaction.user.voice.channel
+        # Get channel - use provided channel or user's current channel
+        if channel is None:
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                embed = discord.Embed(
+                    title="❌ No Channel Specified",
+                    description="You must be in a voice channel or specify a channel",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            channel = interaction.user.voice.channel
         
         # Check permissions
         if not (self.is_channel_owner(interaction.user.id, channel.id) or 
@@ -326,17 +334,21 @@ class VoiceChannelManager(commands.Cog):
         )
     
     @vc_group.command(name="info", description="Get info about current voice channel")
-    async def vc_info(self, interaction: discord.Interaction):
+    @app_commands.describe(channel="Target voice channel (leave empty for your current channel)")
+    async def vc_info(self, interaction: discord.Interaction, channel: discord.VoiceChannel = None):
         """Get voice channel info"""
-        # Check if user in voice channel
-        if not interaction.user.voice or not interaction.user.voice.channel:
-            await interaction.response.send_message(
-                "❌ You must be in a voice channel to use this command",
-                ephemeral=True
-            )
-            return
+        # Get channel - use provided channel or user's current channel
+        if channel is None:
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                embed = discord.Embed(
+                    title="❌ No Channel Specified",
+                    description="You must be in a voice channel or specify a channel",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            channel = interaction.user.voice.channel
         
-        channel = interaction.user.voice.channel
         data = self.get_vc_data()
         channel_data = data.get(str(channel.id), {})
         
@@ -345,21 +357,170 @@ class VoiceChannelManager(commands.Cog):
             color=discord.Color.blue()
         )
         
-        embed.add_field("Channel", f"**{channel.name}**", inline=False)
-        embed.add_field("Members", f"**{len(channel.members)}**", inline=True)
+        embed.add_field(name="Channel", value=f"**{channel.name}**", inline=False)
+        embed.add_field(name="Members", value=f"**{len(channel.members)}**", inline=True)
         
         limit_text = "Unlimited" if channel.user_limit == 0 else str(channel.user_limit)
-        embed.add_field("User Limit", limit_text, inline=True)
+        embed.add_field(name="User Limit", value=limit_text, inline=True)
         
         if str(channel.id) in data:
             owner_id = channel_data.get("owner_id")
             is_locked = channel_data.get("is_locked", False)
-            embed.add_field("Owner", f"<@{owner_id}>", inline=True)
-            embed.add_field("Status", f"{'🔒 Locked' if is_locked else '🔓 Unlocked'}", inline=True)
+            embed.add_field(name="Owner", value=f"<@{owner_id}>", inline=True)
+            embed.add_field(name="Status", value=f"{'🔒 Locked' if is_locked else '🔓 Unlocked'}", inline=True)
         else:
-            embed.add_field("Owner", "None (not managed)", inline=True)
+            embed.add_field(name="Owner", value="None (not managed)", inline=True)
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    @vc_group.command(name="kick", description="Kick a member from voice channel")
+    @app_commands.describe(member="Member to kick from the voice channel", channel="Target voice channel (leave empty for your current channel)")
+    async def vc_kick(self, interaction: discord.Interaction, member: discord.Member, channel: discord.VoiceChannel = None):
+        """Kick member from voice channel (owner or admin only)"""
+        # Get channel - use provided channel or user's current channel
+        if channel is None:
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                embed = discord.Embed(
+                    title="❌ No Channel Specified",
+                    description="You must be in a voice channel or specify a channel",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            channel = interaction.user.voice.channel
+        
+        # Check permissions (owner or admin)
+        is_owner = self.is_channel_owner(interaction.user.id, channel.id)
+        is_admin = interaction.user.guild_permissions.administrator
+        
+        if not (is_owner or is_admin):
+            embed = discord.Embed(
+                title="❌ No Permission",
+                description="Only channel owner or server admin can kick members",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        # Check if target is in same channel
+        if member.voice is None or member.voice.channel != channel:
+            embed = discord.Embed(
+                title="❌ Not in Channel",
+                description=f"**{member.name}** is not in this voice channel",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        try:
+            await member.move_to(None)
+            
+            embed = discord.Embed(
+                title="✅ Member Kicked",
+                description=f"**{member.name}** has been kicked from {channel.name}",
+                color=discord.Color.green()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Error",
+                description=f"Failed to kick member: {str(e)}",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    @vc_group.command(name="mute", description="Mute members in voice channel")
+    @app_commands.describe(action="Action: mute or unmute", member="Member to mute/unmute (leave empty for all)", channel="Target voice channel (leave empty for your current channel)")
+    async def vc_mute(self, interaction: discord.Interaction, action: str, member: discord.Member = None, channel: discord.VoiceChannel = None):
+        """Mute/unmute members in voice channel (owner or admin only)"""
+        # Validate action
+        if action.lower() not in ["mute", "unmute"]:
+            embed = discord.Embed(
+                title="❌ Invalid Action",
+                description="Use 'mute' or 'unmute'",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        # Get channel - use provided channel or user's current channel
+        if channel is None:
+            if not interaction.user.voice or not interaction.user.voice.channel:
+                embed = discord.Embed(
+                    title="❌ No Channel Specified",
+                    description="You must be in a voice channel or specify a channel",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+            channel = interaction.user.voice.channel
+        
+        # Check permissions (owner or admin)
+        is_owner = self.is_channel_owner(interaction.user.id, channel.id)
+        is_admin = interaction.user.guild_permissions.administrator
+        
+        if not (is_owner or is_admin):
+            embed = discord.Embed(
+                title="❌ No Permission",
+                description="Only channel owner or server admin can mute members",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        try:
+            is_muting = action.lower() == "mute"
+            
+            # If specific member provided, mute only that member
+            if member:
+                # Check if member is in same channel
+                if member.voice is None or member.voice.channel != channel:
+                    embed = discord.Embed(
+                        title="❌ Not in Channel",
+                        description=f"**{member.name}** is not in this voice channel",
+                        color=discord.Color.red()
+                    )
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return
+                
+                await member.edit(mute=is_muting)
+                action_text = "muted" if is_muting else "unmuted"
+                
+                embed = discord.Embed(
+                    title=f"✅ Member {action_text.capitalize()}",
+                    description=f"**{member.name}** has been {action_text}",
+                    color=discord.Color.green()
+                )
+                embed.add_field(name="Channel", value=f"**{channel.name}**", inline=False)
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+            else:
+                # Mute/unmute all members
+                count = 0
+                
+                for target_member in channel.members:
+                    try:
+                        await target_member.edit(mute=is_muting)
+                        count += 1
+                    except:
+                        pass
+                
+                action_text = "muted" if is_muting else "unmuted"
+                embed = discord.Embed(
+                    title=f"✅ Members {action_text.capitalize()}",
+                    description=f"**{count}** member(s) have been {action_text}",
+                    color=discord.Color.green()
+                )
+                embed.add_field(name="Channel", value=f"**{channel.name}**", inline=False)
+                
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ Error",
+                description=f"Failed to mute member: {str(e)}",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot):
     """Load the cog"""
