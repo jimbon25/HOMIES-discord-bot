@@ -4,13 +4,13 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import time
 from datetime import datetime
-from dashboard.tracker import ActivityTracker
+from dashboard.tracker import activity_tracker
 from dashboard.display import DashboardDisplay
 
 class DashboardCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.tracker = ActivityTracker()
+        self.tracker = activity_tracker
         self.display = DashboardDisplay()
         self.start_time = None
         self.last_reset_date = None

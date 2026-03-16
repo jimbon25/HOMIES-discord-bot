@@ -76,8 +76,8 @@ class ActivityTracker:
             self.cache_dirty.add(guild_id)
         else:
             data["last_updated"] = datetime.now().isoformat()
-            Path(data_file).parent.mkdir(parents=True, exist_ok=True)
-            with open(data_file, 'w') as f:
+            Path(self.data_file).parent.mkdir(parents=True, exist_ok=True)
+            with open(self.data_file, 'w') as f:
                 json.dump(data, f, indent=2)
     
     async def flush_cache(self):

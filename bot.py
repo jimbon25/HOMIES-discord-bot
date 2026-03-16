@@ -54,7 +54,14 @@ class AnnouncerBot(commands.Bot):
                     return
                 
                 # Check for custom messages
-                content_after_prefix = message.content[len(self.command_prefix):].split()[0].lower()
+                content_after_prefix = message.content[len(self.command_prefix):].strip()
+                words = content_after_prefix.split()
+                
+                # Validate that there's at least a command
+                if not words:
+                    return
+                    
+                command = words[0].lower()
                 
                 # Get custom message cog
                 custom_msg_cog = self.get_cog('CustomMessageManager')
