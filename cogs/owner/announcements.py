@@ -104,8 +104,8 @@ class Announcements(commands.Cog):
                 )
                 
                 # Add server info with formatted member count
-                member_count = guild.member_count or 0
-                formatted_members = f"{member_count:,}"  # Format dengan separator (e.g., 2,758)
+                # Using dummy member count for consistent template (2,758)
+                formatted_members = "2,758"
                 
                 embed.add_field(
                     name="Server",
