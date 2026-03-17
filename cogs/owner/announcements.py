@@ -31,19 +31,19 @@ class Announcements(commands.Cog):
         """Get announcement channel ID for guild"""
         return self.announce_channels.get(str(guild_id))
     
-    @app_commands.command(name="setannouncechannel", description="Set announcement channel for this server")
-    @app_commands.describe(channel="Channel where announcements will be sent")
+    @app_commands.command(name="getupdates", description="Set channel to receive bot update announcements")
+    @app_commands.describe(channel="Channel where bot updates will be sent")
     @app_commands.checks.has_permissions(administrator=True)
-    async def set_announce_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
-        """Set announcement channel"""
+    async def set_updates_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        """Configure channel for bot updates"""
         
         guild_id = str(interaction.guild.id)
         self.announce_channels[guild_id] = channel.id
         self.save_config()
         
         embed = discord.Embed(
-            title="✅ Announcement Channel Set",
-            description=f"Announcements will now be sent to {channel.mention}",
+            title="✅ Updates Channel Configured",
+            description=f"Bot updates will now be sent to {channel.mention}",
             color=discord.Color.green()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)

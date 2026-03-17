@@ -38,7 +38,7 @@ class Author(commands.Cog):
         
         embed1.add_field(
             name="Total Servers",
-            value="5,247+ servers",
+            value="2.843 servers",
             inline=False
         )
         
