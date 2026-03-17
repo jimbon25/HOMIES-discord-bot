@@ -79,6 +79,7 @@ class Announcements(commands.Cog):
         
         sent_count = 0
         failed_count = 0
+        skipped_count = 0
         is_test = test.lower() in ["yes", "true", "1"]
         
         # Determine which guilds to send to
@@ -86,19 +87,21 @@ class Announcements(commands.Cog):
         
         # Send to all guilds
         for guild in target_guilds:
+            channel_id = self.get_announce_channel(guild.id)
+            
+            # Only send if channel configured for this guild
+            if not channel_id:
+                skipped_count += 1
+                continue
+            
             try:
-                channel_id = self.get_announce_channel(guild.id)
-                
-                # Only send if channel configured for this guild
-                if not channel_id:
-                    continue
-                
-                try:
-                    channel = await self.bot.fetch_channel(channel_id)
-                except:
-                    failed_count += 1
-                    continue
-                
+                channel = await self.bot.fetch_channel(channel_id)
+            except Exception as e:
+                print(f"Error fetching channel {channel_id} for guild {guild.name}: {e}")
+                failed_count += 1
+                continue
+            
+            try:
                 # Create announcement embed
                 embed = discord.Embed(
                     title="BOT UPDATE",
@@ -137,7 +140,7 @@ class Announcements(commands.Cog):
                 
                 await channel.send(embed=embed, view=view)
                 sent_count += 1
-            
+                
             except Exception as e:
                 print(f"Error sending announcement to {guild.name}: {e}")
                 failed_count += 1
@@ -153,7 +156,14 @@ class Announcements(commands.Cog):
         )
         summary.add_field(name="✅ Sent", value=sent_count, inline=True)
         summary.add_field(name="❌ Failed", value=failed_count, inline=True)
-        summary.add_field(name="⏭️ Skipped", value=len(target_guilds) - sent_count - failed_count, inline=True)
+        summary.add_field(name="⏭️ Skipped", value=skipped_count, inline=True)
+        
+        if is_test and sent_count == 0 and skipped_count > 0:
+            summary.add_field(
+                name="⚠️ Note",
+                value=f"This server is not configured for announcements. Use `/getupdates #channel` to enable it first.",
+                inline=False
+            )
         
         if is_test:
             summary.add_field(
