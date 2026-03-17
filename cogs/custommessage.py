@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from utils import safe_save_json
 
 class CustomMessageModal(Modal, title="Create Custom Message"):
     """Modal for creating custom messages"""
