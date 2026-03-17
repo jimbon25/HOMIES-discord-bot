@@ -2,6 +2,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.ui import View, Button
 import json
 import os
 from pathlib import Path
@@ -100,7 +101,7 @@ class Announcements(commands.Cog):
                 
                 # Create announcement embed
                 embed = discord.Embed(
-                    title="ANNOUNCEMENT",
+                    title="BOT UPDATE",
                     description=message,
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
@@ -121,16 +122,20 @@ class Announcements(commands.Cog):
                     inline=True
                 )
                 
-                # Add community server link
-                embed.add_field(
-                    name="Community Server",
-                    value="[Join Server](https://discord.gg/C5xz4RZ7)",
-                    inline=False
-                )
-                
+                # Add community server link (removed - will use button instead)
                 embed.set_footer(text=f"Global Broadcast • Server: Homies Hub")
                 
-                await channel.send(embed=embed)
+                # Create button for community server join
+                view = View()
+                join_button = Button(
+                    label="Join Community Server",
+                    url="https://discord.gg/C5xz4RZ7",
+                    style=discord.ButtonStyle.primary,
+                    emoji="➜"
+                )
+                view.add_item(join_button)
+                
+                await channel.send(embed=embed, view=view)
                 sent_count += 1
             
             except Exception as e:
