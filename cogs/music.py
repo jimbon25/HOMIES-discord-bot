@@ -101,8 +101,7 @@ class MusicPlayer(commands.Cog):
             
             # Create audio source with FFmpeg
             source = discord.FFmpegPCMAudio(
-                str(selected_song),
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                str(selected_song.resolve()),
                 options="-vn"
             )
             
@@ -111,19 +110,17 @@ class MusicPlayer(commands.Cog):
                 if error:
                     logger.error(f"Playback error: {error}")
                 
-                # Handle queue/loop
+                # Handle queue/loop - just update state, don't replay
                 if self.loop_mode[guild_id] == "song":
-                    # Restart same song
-                    self.play_song(guild_id)
+                    # Restart same song by stopping let discord call after_play again
+                    pass
                 elif self.loop_mode[guild_id] == "queue":
                     # Move to next, loop back at end
                     self.current_song[guild_id] = (self.current_song[guild_id] + 1) % len(self.queue[guild_id])
-                    self.play_song(guild_id)
                 else:
                     # Next song
                     if self.current_song[guild_id] + 1 < len(self.queue[guild_id]):
                         self.current_song[guild_id] += 1
-                        self.play_song(guild_id)
             
             # Set queue
             self.queue[guild_id] = [selected_song]
@@ -213,7 +210,7 @@ class MusicPlayer(commands.Cog):
         else:
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
-    async def play_song(self, guild_id: int):
+    def play_song(self, guild_id: int):
         """Internal method to play song from queue"""
         if guild_id not in self.voice_client or not self.queue[guild_id]:
             return
@@ -226,8 +223,7 @@ class MusicPlayer(commands.Cog):
         
         try:
             source = discord.FFmpegPCMAudio(
-                str(song_path),
-                before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+                str(song_path.resolve()),
                 options="-vn"
             )
             voice_client.play(source)
