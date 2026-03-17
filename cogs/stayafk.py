@@ -10,70 +10,57 @@ logger = logging.getLogger(__name__)
 class StayAFK(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.voice_clients = {}  # Track bot's voice connections
-        self.stay_afk_mode = {}  # Track which channels are in stay_afk mode
-        self.alone_since = {}  # Track when bot started being alone (guild_id -> datetime)
-        self.alone_threshold = 60  # Auto-disconnect after 1 minute alone (60 seconds) - FOR TESTING, change to 600 for production
-        logger.info("✅ StayAFK cog initialized - starting auto-disconnect checker")
+        self.voice_clients = {}  # Track bot's voice connections per guild
+        self.stay_afk_mode = {}  # Track which guilds are in stay_afk mode
+        self.alone_since = {}  # Track when bot became alone (guild_id -> datetime)
+        self.alone_threshold = 180  # Auto-disconnect after 3 minutes alone (180 seconds)
         self.check_alone.start()  # Start background task
     
     @tasks.loop(minutes=1)
     async def check_alone(self):
         """Check if bot is alone in voice channel and auto-disconnect after timeout"""
-        logger.info(f"🔄 Checking voice status: {len(self.voice_clients)} voice connections tracked")
-        
         for guild_id in list(self.voice_clients.keys()):
             try:
                 voice_client = self.voice_clients[guild_id]
                 
+                # Check if voice connection is still valid
                 if not voice_client or not voice_client.is_connected():
-                    # Cleanup if disconnected
                     if guild_id in self.alone_since:
                         del self.alone_since[guild_id]
-                    logger.debug(f"Guild {guild_id}: voice_client not connected, skipping")
                     continue
                 
                 channel = voice_client.channel
-                # Count members excluding the bot itself
+                # Count human members (exclude bots)
                 member_count = len([m for m in channel.members if not m.bot])
                 
-                logger.info(f"Guild {guild_id} - Channel {channel.name}: {member_count} human members, {len(channel.members)} total")
-                
                 if member_count == 0:
-                    # Bot is alone
+                    # Bot is alone - track time
                     if guild_id not in self.alone_since:
-                        # Just became alone
                         self.alone_since[guild_id] = datetime.now()
                         logger.info(f"⏰ Bot became alone in {channel.name}")
                     else:
-                        # Check if alone for too long
+                        # Check if timeout reached
                         alone_duration = (datetime.now() - self.alone_since[guild_id]).total_seconds()
-                        logger.info(f"⏳ Bot alone for {alone_duration:.0f}s / threshold {self.alone_threshold}s in {channel.name}")
                         
                         if alone_duration >= self.alone_threshold:
-                            # Auto-disconnect
+                            # Time to disconnect
+                            logger.info(f"⏱️ Timeout reached! Auto-disconnecting from {channel.name} (alone for {alone_duration:.0f}s)")
                             try:
-                                guild = self.bot.get_guild(guild_id)
-                                logger.warning(f"⏱️ Timeout reached! Disconnecting bot from {channel.name}")
                                 await voice_client.disconnect(force=True)
-                                
-                                # Cleanup tracking
-                                if guild_id in self.voice_clients:
-                                    del self.voice_clients[guild_id]
-                                if guild_id in self.alone_since:
-                                    del self.alone_since[guild_id]
-                                if guild_id in self.stay_afk_mode:
-                                    del self.stay_afk_mode[guild_id]
-                                
-                                logger.info(f"✅ Bot auto-disconnected from {channel.name} in {guild.name} (was alone for {alone_duration//60} minutes)")
+                                guild = self.bot.get_guild(guild_id)
+                                logger.info(f"✅ Auto-disconnected from {channel.name} in {guild.name}")
                             except Exception as e:
-                                logger.error(f"Error auto-disconnecting bot: {e}")
+                                logger.error(f"Error auto-disconnecting: {e}")
+                            finally:
+                                # Cleanup tracking
+                                self.voice_clients.pop(guild_id, None)
+                                self.alone_since.pop(guild_id, None)
+                                self.stay_afk_mode.pop(guild_id, None)
                 else:
-                    # Bot is not alone anymore - reset timer
+                    # Bot is not alone - reset timer
                     if guild_id in self.alone_since:
                         del self.alone_since[guild_id]
-                        logger.info(f"🔄 Reset alone timer for {channel.name} ({member_count} members present)")
-                        del self.alone_since[guild_id]
+                        logger.info(f"🔄 Reset alone timer in {channel.name} ({member_count} members present)")
             
             except Exception as e:
                 logger.error(f"Error checking alone status for guild {guild_id}: {e}")
@@ -82,7 +69,6 @@ class StayAFK(commands.Cog):
     async def before_check_alone(self):
         """Wait until bot is ready before starting check"""
         await self.bot.wait_until_ready()
-        logger.info("✅ Auto-disconnect checker started - bot is ready")
     
     stayafk_group = app_commands.Group(name="stayafk", description="Bot stay AFK in voice channel")
     
@@ -119,8 +105,11 @@ class StayAFK(commands.Cog):
             # Deafen bot (mute incoming audio)
             try:
                 await guild.me.edit(deafen=True)
-            except Exception as deafen_error:
-                logger.warning(f"Deafen error: {deafen_error}")
+            except Exception as e:
+                logger.debug(f"Deafen error: {e}")
+            
+            # Mark as in stay_afk mode
+            self.stay_afk_mode[guild.id] = True
             
             embed = discord.Embed(
                 title="🎤 Bot Joined Voice Channel",
@@ -129,18 +118,15 @@ class StayAFK(commands.Cog):
             )
             embed.add_field(name="Channel", value=channel.name, inline=True)
             embed.add_field(name="Status", value="🟢 Stay AFK Mode (Deafened)", inline=True)
+            embed.add_field(name="Auto-disconnect", value="After 3 minutes alone", inline=True)
             embed.add_field(name="Stop with", value="`/stayafk leave`", inline=True)
-            
-            # Mark this guild as in stay_afk mode
-            self.stay_afk_mode[guild.id] = True
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
         except Exception as e:
             # Cleanup on error
-            if guild.id in self.voice_clients:
-                del self.voice_clients[guild.id]
-            
+            self.voice_clients.pop(guild.id, None)
+            logger.error(f"Error joining voice channel: {e}")
             await interaction.response.send_message(
                 f"❌ Error joining voice channel: {str(e)}",
                 ephemeral=True
@@ -149,7 +135,6 @@ class StayAFK(commands.Cog):
     @stayafk_group.command(name="leave", description="Bot leaves voice channel")
     async def leave(self, interaction: discord.Interaction):
         """Bot leaves voice channel"""
-        
         guild = interaction.guild
         
         # Check if bot in voice
@@ -160,40 +145,25 @@ class StayAFK(commands.Cog):
             )
             return
         
+        voice_client = self.voice_clients[guild.id]
+        
         try:
-            voice_client = self.voice_clients[guild.id]
-            
             if not voice_client or not voice_client.is_connected():
-                # Remove from tracking even if already disconnected
-                del self.voice_clients[guild.id]
                 await interaction.response.send_message(
                     "❌ Bot is not connected to voice",
                     ephemeral=True
                 )
                 return
             
-            try:
-                channel_name = voice_client.channel.name
-            except:
-                channel_name = "Unknown Channel"
+            channel_name = voice_client.channel.name if voice_client.channel else "Unknown Channel"
             
             # Disconnect bot
-            try:
-                await voice_client.disconnect(force=True)
-            except Exception as disconnect_error:
-                logger.warning(f"Disconnect error: {disconnect_error}")
+            await voice_client.disconnect(force=True)
             
-            # Remove from tracking
-            if guild.id in self.voice_clients:
-                del self.voice_clients[guild.id]
-            
-            # Remove from stay_afk mode
-            if guild.id in self.stay_afk_mode:
-                del self.stay_afk_mode[guild.id]
-            
-            # Reset alone timer
-            if guild.id in self.alone_since:
-                del self.alone_since[guild.id]
+            # Cleanup tracking
+            self.voice_clients.pop(guild.id, None)
+            self.stay_afk_mode.pop(guild.id, None)
+            self.alone_since.pop(guild.id, None)
             
             embed = discord.Embed(
                 title="👋 Bot Left Voice Channel",
@@ -205,28 +175,13 @@ class StayAFK(commands.Cog):
         
         except Exception as e:
             # Cleanup on error
-            if guild.id in self.voice_clients:
-                try:
-                    del self.voice_clients[guild.id]
-                except:
-                    pass
-            
-            if guild.id in self.stay_afk_mode:
-                try:
-                    del self.stay_afk_mode[guild.id]
-                except:
-                    pass
-            
-            # Reset alone timer
-            if guild.id in self.alone_since:
-                try:
-                    del self.alone_since[guild.id]
-                except:
-                    pass
+            self.voice_clients.pop(guild.id, None)
+            self.stay_afk_mode.pop(guild.id, None)
+            self.alone_since.pop(guild.id, None)
             
             logger.error(f"Leave command error: {e}")
             await interaction.response.send_message(
-                f"✅ Bot has been disconnected from voice (error: {type(e).__name__})",
+                f"✅ Bot has been disconnected from voice",
                 ephemeral=True
             )
     
@@ -293,8 +248,7 @@ class StayAFK(commands.Cog):
     
     @stayafk_group.command(name="clearcache", description="Clear bot voice cache (for troubleshooting)")
     async def clearcache(self, interaction: discord.Interaction):
-        """Clear voice client cache"""
-        
+        """Clear voice client cache and disconnect"""
         guild = interaction.guild
         
         try:
@@ -304,17 +258,13 @@ class StayAFK(commands.Cog):
                 if voice_client and voice_client.is_connected():
                     try:
                         await voice_client.disconnect(force=True)
-                    except:
-                        pass
-                del self.voice_clients[guild.id]
+                    except Exception as e:
+                        logger.debug(f"Disconnect error during cache clear: {e}")
             
-            # Clear stay_afk mode
-            if guild.id in self.stay_afk_mode:
-                del self.stay_afk_mode[guild.id]
-            
-            # Reset alone timer
-            if guild.id in self.alone_since:
-                del self.alone_since[guild.id]
+            # Clear all tracking for this guild
+            self.voice_clients.pop(guild.id, None)
+            self.stay_afk_mode.pop(guild.id, None)
+            self.alone_since.pop(guild.id, None)
             
             embed = discord.Embed(
                 title="🧹 Cache Cleared",
@@ -330,6 +280,7 @@ class StayAFK(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
         
         except Exception as e:
+            logger.error(f"Error clearing cache: {e}")
             await interaction.response.send_message(
                 f"❌ Error clearing cache: {str(e)}",
                 ephemeral=True
@@ -337,33 +288,24 @@ class StayAFK(commands.Cog):
     
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        """Handle when bot gets disconnected or kicked"""
+        """Handle voice state changes - track when bot disconnects or when members join/leave"""
+        guild_id = member.guild.id
+        
         if member.id == self.bot.user.id:
-            # Bot disconnected
+            # Bot voice state changed
             if before.channel and not after.channel:
-                guild = member.guild
-                logger.info(f"Bot disconnected from voice in guild {guild.id}")
-                
-                # Only cleanup if not in stay_afk mode
-                # (allow bot to reconnect if channel was temp deleted)
-                if guild.id in self.voice_clients:
-                    del self.voice_clients[guild.id]
-                
-                # Reset alone timer
-                if guild.id in self.alone_since:
-                    del self.alone_since[guild.id]
-                
-                # Keep stay_afk_mode flag so we can attempt reconnect if needed
-                logger.debug(f"Cleaned up voice connection for guild {guild.id}")
+                # Bot was disconnected
+                logger.info(f"Bot disconnected from voice in {member.guild.name}")
+                self.voice_clients.pop(guild_id, None)
+                self.alone_since.pop(guild_id, None)
         else:
-            # Someone else joined/left - reset alone timer if bot is in voice
-            guild = member.guild
-            if guild.id in self.voice_clients:
-                voice_client = self.voice_clients[guild.id]
+            # Another member's voice state changed - reset alone timer if bot is in voice
+            if guild_id in self.voice_clients:
+                voice_client = self.voice_clients[guild_id]
                 if voice_client and voice_client.is_connected():
-                    # Reset alone timer since user state changed
-                    if guild.id in self.alone_since:
-                        del self.alone_since[guild.id]
+                    # Reset timer when user state changes (join/leave)
+                    if guild_id in self.alone_since:
+                        del self.alone_since[guild_id]
 
 async def setup(bot):
     """Load the cog"""
