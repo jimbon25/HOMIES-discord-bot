@@ -55,9 +55,10 @@ class Announcements(commands.Cog):
     @app_commands.command(name="broadcastannounce", description="Send global announcement to all servers")
     @app_commands.describe(
         message="Announcement message",
-        test="Test mode - only send to current server (yes/no)"
+        test="Test mode - only send to current server (yes/no)",
+        mention="Mention @everyone or @here (none/everyone/here)"
     )
-    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no"):
+    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no", mention: str = "none"):
         """Send global announcement"""
         
         # Convert escaped newlines to actual newlines
@@ -137,13 +138,20 @@ class Announcements(commands.Cog):
                 # Create button for community server join
                 view = View()
                 join_button = Button(
-                    label="➜ Join Community Server",
+                    label="Join Community Server",
                     url="https://discord.gg/C5xz4RZ7",
                     style=discord.ButtonStyle.primary
                 )
                 view.add_item(join_button)
                 
-                await channel.send(embed=embed, view=view)
+                # Prepare mention text
+                mention_text = ""
+                if mention.lower() in ["everyone", "@everyone"]:
+                    mention_text = "@everyone\n"
+                elif mention.lower() in ["here", "@here"]:
+                    mention_text = "@here\n"
+                
+                await channel.send(content=mention_text, embed=embed, view=view, allowed_mentions=discord.AllowedMentions(everyone=True))
                 sent_count += 1
                 
             except Exception as e:
@@ -164,6 +172,14 @@ class Announcements(commands.Cog):
         summary.add_field(name="✅ Sent", value=sent_count, inline=True)
         summary.add_field(name="❌ Failed", value=failed_count, inline=True)
         summary.add_field(name="⏭️ Skipped", value=skipped_count, inline=True)
+        
+        # Show mention setting
+        mention_display = "none"
+        if mention.lower() in ["everyone", "@everyone"]:
+            mention_display = "@everyone"
+        elif mention.lower() in ["here", "@here"]:
+            mention_display = "@here"
+        summary.add_field(name="📢 Mention", value=mention_display, inline=True)
         
         # Add error details if any
         if error_details:
