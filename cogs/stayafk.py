@@ -13,7 +13,7 @@ class StayAFK(commands.Cog):
         self.voice_clients = {}  # Track bot's voice connections
         self.stay_afk_mode = {}  # Track which channels are in stay_afk mode
         self.alone_since = {}  # Track when bot started being alone (guild_id -> datetime)
-        self.alone_threshold = 600  # Auto-disconnect after 10 minutes alone (600 seconds)
+        self.alone_threshold = 60  # Auto-disconnect after 1 minute alone (60 seconds) - FOR TESTING, change to 600 for production
         logger.info("✅ StayAFK cog initialized - starting auto-disconnect checker")
         self.check_alone.start()  # Start background task
     
