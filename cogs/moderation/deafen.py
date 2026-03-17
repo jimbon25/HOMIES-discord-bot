@@ -58,6 +58,12 @@ class DeafenModeration(commands.Cog):
         
         try:
             await member.edit(deafen=True)
+            
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                await modlog_cog.log_action(interaction.guild, "deafen", interaction.user, member, "Deafened member")
+            
             embed = discord.Embed(
                 title="🔇 Member Deafened",
                 description=f"**{member.mention}** has been deafened",
@@ -110,6 +116,12 @@ class DeafenModeration(commands.Cog):
         
         try:
             await member.edit(deafen=False)
+            
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                await modlog_cog.log_action(interaction.guild, "undeafen", interaction.user, member, "Undeafened member")
+            
             embed = discord.Embed(
                 title="🔊 Member Undeafened",
                 description=f"**{member.mention}** has been undeafened",

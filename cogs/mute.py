@@ -124,6 +124,12 @@ class Mute(commands.Cog):
             # Apply timeout
             await member.timeout(timeout_duration, reason=reason)
             
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                log_reason = f"Muted for {self.format_duration(timeout_duration)}. Reason: {reason or 'No reason provided'}"
+                await modlog_cog.log_action(interaction.guild, "mute", interaction.user, member, log_reason)
+            
             # Create success embed
             embed = discord.Embed(
                 title="Member Muted",
@@ -184,6 +190,12 @@ class Mute(commands.Cog):
         try:
             # Remove timeout
             await member.timeout(None, reason=reason)
+            
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                log_reason = f"Unmuted. Reason: {reason or 'No reason provided'}"
+                await modlog_cog.log_action(interaction.guild, "unmute", interaction.user, member, log_reason)
             
             # Create success embed
             embed = discord.Embed(

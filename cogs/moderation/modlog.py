@@ -90,6 +90,24 @@ class ModerationLog(commands.Cog):
         elif action == "clearwarnings":
             color = discord.Color.green()
             emoji = "🔄"
+        elif action == "deafen":
+            color = discord.Color.greyple()
+            emoji = "🔇"
+        elif action == "undeafen":
+            color = discord.Color.greyple()
+            emoji = "🔊"
+        elif action == "mute":
+            color = discord.Color.orange()
+            emoji = "🤐"
+        elif action == "unmute":
+            color = discord.Color.green()
+            emoji = "💬"
+        elif action == "addrole":
+            color = discord.Color.blue()
+            emoji = "➕"
+        elif action == "delrole":
+            color = discord.Color.purple()
+            emoji = "➖"
         else:
             color = discord.Color.blurple()
             emoji = "📋"

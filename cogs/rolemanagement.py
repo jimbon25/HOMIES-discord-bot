@@ -51,6 +51,12 @@ class RoleManagement(commands.Cog):
         
         try:
             await member.add_roles(role)
+            
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                await modlog_cog.log_action(interaction.guild, "addrole", interaction.user, member, f"Role added: {role.mention}")
+            
             embed = discord.Embed(
                 title="✅ Role Added",
                 description=f"Added **{role.mention}** to **{member.mention}**",
@@ -106,6 +112,12 @@ class RoleManagement(commands.Cog):
         
         try:
             await member.remove_roles(role)
+            
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                await modlog_cog.log_action(interaction.guild, "delrole", interaction.user, member, f"Role removed: {role.mention}")
+            
             embed = discord.Embed(
                 title="✅ Role Removed",
                 description=f"Removed **{role.mention}** from **{member.mention}**",
