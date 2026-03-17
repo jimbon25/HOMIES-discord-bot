@@ -49,8 +49,11 @@ class Announcements(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
     @app_commands.command(name="broadcastannounce", description="Send global announcement to all servers")
-    @app_commands.describe(message="Announcement message")
-    async def broadcast_announce(self, interaction: discord.Interaction, message: str):
+    @app_commands.describe(
+        message="Announcement message",
+        test="Test mode - only send to current server (yes/no)"
+    )
+    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no"):
         """Send global announcement"""
         
         # Check if user is owner
@@ -72,9 +75,13 @@ class Announcements(commands.Cog):
         
         sent_count = 0
         failed_count = 0
+        is_test = test.lower() in ["yes", "true", "1"]
+        
+        # Determine which guilds to send to
+        target_guilds = [interaction.guild] if is_test else self.bot.guilds
         
         # Send to all guilds
-        for guild in self.bot.guilds:
+        for guild in target_guilds:
             try:
                 channel_id = self.get_announce_channel(guild.id)
                 
@@ -119,14 +126,24 @@ class Announcements(commands.Cog):
                 failed_count += 1
         
         # Send summary
+        summary_title = "📨 Test Announcement" if is_test else "📨 Global Announcement Sent"
+        summary_desc = "Announcement tested in this server" if is_test else "Announcement dispatched to all configured servers"
+        
         summary = discord.Embed(
-            title="📨 Announcement Sent",
-            description=f"Announcement dispatched to servers",
-            color=discord.Color.green()
+            title=summary_title,
+            description=summary_desc,
+            color=discord.Color.gold() if is_test else discord.Color.green()
         )
         summary.add_field(name="✅ Sent", value=sent_count, inline=True)
         summary.add_field(name="❌ Failed", value=failed_count, inline=True)
-        summary.add_field(name="⏭️ Skipped", value=len(self.bot.guilds) - sent_count - failed_count, inline=True)
+        summary.add_field(name="⏭️ Skipped", value=len(target_guilds) - sent_count - failed_count, inline=True)
+        
+        if is_test:
+            summary.add_field(
+                name="Test Mode",
+                value="✅ Testing completed. Use `/broadcastannounce message no` to broadcast globally",
+                inline=False
+            )
         
         await interaction.followup.send(embed=summary, ephemeral=True)
 
