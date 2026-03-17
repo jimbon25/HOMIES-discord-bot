@@ -128,7 +128,7 @@ class Announcements(commands.Cog):
                     inline=False
                 )
                 
-                embed.set_footer(text=f"From Bot Owner • Server: {guild.name}")
+                embed.set_footer(text=f"Global Broadcast • Server: {guild.name}")
                 
                 await channel.send(embed=embed)
                 sent_count += 1
