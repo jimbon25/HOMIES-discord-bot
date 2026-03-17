@@ -112,7 +112,7 @@ class Announcements(commands.Cog):
                 
                 embed.add_field(
                     name="Server",
-                    value=guild.name,
+                    value="Homies Hub",
                     inline=True
                 )
                 embed.add_field(
@@ -128,7 +128,7 @@ class Announcements(commands.Cog):
                     inline=False
                 )
                 
-                embed.set_footer(text=f"Global Broadcast • Server: {guild.name}")
+                embed.set_footer(text=f"Global Broadcast • Server: Homies Hub")
                 
                 await channel.send(embed=embed)
                 sent_count += 1
