@@ -103,8 +103,7 @@ class CustomMessageManager(commands.Cog):
         """Save custom messages for guild"""
         self.ensure_dir()
         filepath = self.get_custom_message_file(guild_id)
-        with open(filepath, 'w') as f:
-            json.dump(messages, f, indent=2)
+        safe_save_json(messages, filepath)
     
     def save_custom_message(self, guild_id: int, trigger: str, message: str, user_id: int):
         """Save single custom message"""

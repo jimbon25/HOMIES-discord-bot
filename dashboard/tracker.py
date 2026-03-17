@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Optional
+from utils import safe_save_json
 
 class ActivityTracker:
     def __init__(self, data_file: str = "data/stats.json"):
@@ -76,9 +77,7 @@ class ActivityTracker:
             self.cache_dirty.add(guild_id)
         else:
             data["last_updated"] = datetime.now().isoformat()
-            Path(self.data_file).parent.mkdir(parents=True, exist_ok=True)
-            with open(self.data_file, 'w') as f:
-                json.dump(data, f, indent=2)
+            safe_save_json(data, self.data_file)
     
     async def flush_cache(self):
         """Async flush cache to disk"""
@@ -100,9 +99,7 @@ class ActivityTracker:
     @staticmethod
     def _write_file(filepath: str, data: dict):
         """Helper to write file - runs in executor"""
-        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=2)
+        safe_save_json(data, filepath)
     
     def update_server_info(self, guild_id: int, server_id: int, member_count: int, human_count: int, bot_count: int, role_count: int, channel_count: int):
         """Update server info - per-guild"""
@@ -186,14 +183,12 @@ class ActivityTracker:
     def save_uptime(self, uptime_seconds: int):
         """Save uptime to global file"""
         uptime_file = "data/uptime.json"
-        Path(uptime_file).parent.mkdir(parents=True, exist_ok=True)
         
         data = self.load_uptime()
         data["bot_uptime_seconds"] = uptime_seconds
         data["last_updated"] = datetime.now().isoformat()
         
-        with open(uptime_file, 'w') as f:
-            json.dump(data, f, indent=2)
+        safe_save_json(data, uptime_file)
 
 # Create global instance
 activity_tracker = ActivityTracker()

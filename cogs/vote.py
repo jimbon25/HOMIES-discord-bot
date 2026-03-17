@@ -7,6 +7,7 @@ import json
 import os
 from datetime import datetime
 import logging
+from utils import safe_save_json
 
 logger = logging.getLogger(__name__)
 
@@ -232,8 +233,7 @@ class VotingSystem:
         """Save vote data to JSON"""
         VotingSystem.ensure_dir()
         filepath = f"{VotingSystem.VOTE_DATA_DIR}/{vote_data['vote_id']}.json"
-        with open(filepath, 'w') as f:
-            json.dump(vote_data, f, indent=2)
+        safe_save_json(vote_data, filepath)
     
     @staticmethod
     def load_vote(vote_id: int) -> dict:

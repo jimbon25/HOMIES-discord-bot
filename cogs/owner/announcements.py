@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import logging
+from utils import safe_save_json
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,7 @@ class Announcements(commands.Cog):
     
     def save_config(self):
         """Save announcement channel configuration"""
-        Path(self.config_file).parent.mkdir(parents=True, exist_ok=True)
-        with open(self.config_file, 'w') as f:
-            json.dump(self.announce_channels, f, indent=2)
+        safe_save_json(self.announce_channels, self.config_file)
     
     def get_announce_channel(self, guild_id: int) -> int:
         """Get announcement channel ID for guild"""
@@ -111,7 +110,7 @@ class Announcements(commands.Cog):
             try:
                 # Create announcement embed
                 embed = discord.Embed(
-                    title="BOT UPDATE",
+                    title="EID MUBARAK",
                     description=message,
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
@@ -119,7 +118,7 @@ class Announcements(commands.Cog):
                 
                 # Add server info with formatted member count
                 # Using dummy member count for consistent template (2,758)
-                formatted_members = "2,758"
+                formatted_members = "2,764"
                 
                 embed.add_field(
                     name="Server",

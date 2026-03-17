@@ -6,6 +6,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from utils import safe_save_json
 
 class PrefixManager(commands.Cog):
     def __init__(self, bot):
@@ -45,8 +46,7 @@ class PrefixManager(commands.Cog):
         self.ensure_prefix_dir()
         filepath = self.get_prefix_file(guild_id)
         settings["last_updated"] = datetime.now().isoformat()
-        with open(filepath, 'w') as f:
-            json.dump(settings, f, indent=2)
+        safe_save_json(settings, filepath)
     
     def is_prefix_enabled(self, guild_id: int) -> bool:
         """Check if prefix commands are enabled for guild"""

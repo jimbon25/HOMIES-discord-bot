@@ -6,6 +6,7 @@ import aiohttp
 import os
 import json
 from pathlib import Path
+from utils import safe_save_json
 
 logger = logging.getLogger(__name__)
 
@@ -293,8 +294,7 @@ class OwnerChat(commands.Cog):
                     'color': color.value  # Convert discord.Color to int
                 }
             
-            with open(self.json_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+            safe_save_json(data, self.json_path)
             
             logger.info(f"✅ OwnerChat: Saved responses to JSON")
         except Exception as e:

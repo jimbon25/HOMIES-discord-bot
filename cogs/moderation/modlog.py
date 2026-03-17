@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import json
 import os
 from pathlib import Path
+from utils import safe_save_json
 
 class ModerationLog(commands.Cog):
     def __init__(self, bot):
@@ -53,8 +54,7 @@ class ModerationLog(commands.Cog):
     
     def save_warnings(self):
         """Save warnings to JSON file"""
-        with open(self.warnings_file, 'w') as f:
-            json.dump(self.warnings, f, indent=2)
+        safe_save_json(self.warnings, self.warnings_file)
     
     async def get_modlog_channel(self, guild: discord.Guild):
         """Get modlog channel from guild"""

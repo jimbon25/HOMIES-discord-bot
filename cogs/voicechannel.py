@@ -6,6 +6,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from collections import defaultdict
+from utils import safe_save_json
 
 class VoiceChannelManager(commands.Cog):
     def __init__(self, bot):
@@ -28,9 +29,7 @@ class VoiceChannelManager(commands.Cog):
     
     def save_vc_data(self, data):
         """Save voice channel data"""
-        os.makedirs(os.path.dirname(self.vc_data_file), exist_ok=True)
-        with open(self.vc_data_file, 'w') as f:
-            json.dump(data, f, indent=2)
+        safe_save_json(data, self.vc_data_file)
     
     def get_user_voice_channel(self, user: discord.Member) -> discord.VoiceChannel:
         """Get user's current voice channel"""
