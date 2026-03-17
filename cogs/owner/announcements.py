@@ -97,14 +97,16 @@ class Announcements(commands.Cog):
                 
                 # Create announcement embed
                 embed = discord.Embed(
-                    title="📢 ANNOUNCEMENT",
-                    description=message,
+                    title="ANNOUNCEMENT",
+                    description=f"**{message}**",
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
                 
-                # Add server info
+                # Add server info with formatted member count
                 member_count = guild.member_count or 0
+                formatted_members = f"{member_count:,}"  # Format dengan separator (e.g., 2,758)
+                
                 embed.add_field(
                     name="Server",
                     value=guild.name,
@@ -112,8 +114,15 @@ class Announcements(commands.Cog):
                 )
                 embed.add_field(
                     name="Members",
-                    value=f"{member_count}",
+                    value=formatted_members,
                     inline=True
+                )
+                
+                # Add community server link
+                embed.add_field(
+                    name="Community Server",
+                    value="[Join Server](https://discord.gg/C5xz4RZ7)",
+                    inline=False
                 )
                 
                 embed.set_footer(text=f"From Bot Owner • Server: {guild.name}")
