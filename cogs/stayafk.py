@@ -20,7 +20,8 @@ class StayAFK(commands.Cog):
     @tasks.loop(minutes=1)
     async def check_alone(self):
         """Check if bot is alone in voice channel and auto-disconnect after timeout"""
-        logger.debug(f"🔄 Checking alone status for {len(self.voice_clients)} voice connections")
+        if self.voice_clients:
+            logger.info(f"🔄 Checking alone status for {len(self.voice_clients)} voice connections")
         
         for guild_id in list(self.voice_clients.keys()):
             try:
@@ -30,29 +31,31 @@ class StayAFK(commands.Cog):
                     # Cleanup if disconnected
                     if guild_id in self.alone_since:
                         del self.alone_since[guild_id]
+                    logger.debug(f"Guild {guild_id}: voice_client not connected, skipping")
                     continue
                 
                 channel = voice_client.channel
                 # Count members excluding the bot itself
                 member_count = len([m for m in channel.members if not m.bot])
                 
-                logger.debug(f"Guild {guild_id} - Channel {channel.name}: {member_count} human members")
+                logger.info(f"Guild {guild_id} - Channel {channel.name}: {member_count} human members, {len(channel.members)} total")
                 
                 if member_count == 0:
                     # Bot is alone
                     if guild_id not in self.alone_since:
                         # Just became alone
                         self.alone_since[guild_id] = datetime.now()
-                        logger.info(f"Bot became alone in {channel.name}")
+                        logger.info(f"⏰ Bot became alone in {channel.name}")
                     else:
                         # Check if alone for too long
                         alone_duration = (datetime.now() - self.alone_since[guild_id]).total_seconds()
-                        logger.debug(f"Bot alone for {alone_duration:.0f}s / threshold {self.alone_threshold}s")
+                        logger.info(f"⏳ Bot alone for {alone_duration:.0f}s / threshold {self.alone_threshold}s in {channel.name}")
                         
                         if alone_duration >= self.alone_threshold:
                             # Auto-disconnect
                             try:
                                 guild = self.bot.get_guild(guild_id)
+                                logger.warning(f"⏱️ Timeout reached! Disconnecting bot from {channel.name}")
                                 await voice_client.disconnect(force=True)
                                 
                                 # Cleanup tracking
@@ -69,6 +72,8 @@ class StayAFK(commands.Cog):
                 else:
                     # Bot is not alone anymore - reset timer
                     if guild_id in self.alone_since:
+                        del self.alone_since[guild_id]
+                        logger.info(f"🔄 Reset alone timer for {channel.name} ({member_count} members present)")
                         del self.alone_since[guild_id]
             
             except Exception as e:
