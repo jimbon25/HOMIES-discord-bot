@@ -49,12 +49,9 @@ class MusicPlayer(commands.Cog):
             self.loop_mode[guild_id] = "off"
             self.shuffle_mode[guild_id] = False
     
-    music_group = app_commands.Group(name="music", description="Music player commands")
-    
-    @music_group.command(name="play", description="Play a song from local library")
-    @app_commands.describe(song="Song name or part of filename")
-    async def play(self, interaction: discord.Interaction, song: str):
-        """Play a song from the music library"""
+    @app_commands.command(name="mplay", description="Select and play a song from music folder")
+    async def mplay(self, interaction: discord.Interaction):
+        """Play music - select from available songs"""
         
         # Check if user in voice
         if not interaction.user.voice or not interaction.user.voice.channel:
@@ -76,27 +73,28 @@ class MusicPlayer(commands.Cog):
             )
             return
         
-        # Search for song
-        matching_songs = [s for s in available_songs if song.lower() in s.stem.lower()]
+        # Show selection buttons (max 5 songs at a time)
+        view = SongSelectionView(self, interaction, available_songs[:5])
         
-        if not matching_songs:
-            song_list = "\n".join([f"• {s.stem}" for s in available_songs[:10]])
-            await interaction.response.send_message(
-                f"❌ Song not found. Available songs:\n{song_list}",
-                ephemeral=True
-            )
-            return
+        song_list = "\n".join([f"**{i+1}.** {s.stem}" for i, s in enumerate(available_songs[:5])])
+        embed = discord.Embed(
+            title="🎵 Select a Song",
+            description=song_list,
+            color=discord.Color.blue()
+        )
         
-        selected_song = matching_songs[0]
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    
+    async def play_selected_song(self, interaction: discord.Interaction, selected_song: Path):
+        """Internal method to play a selected song"""
+        guild_id = interaction.guild.id
+        self.init_guild(guild_id)
         
         try:
             # Connect to voice if not already
             if guild_id not in self.voice_client or not self.voice_client[guild_id].is_connected():
                 voice_client = await interaction.user.voice.channel.connect()
                 self.voice_client[guild_id] = voice_client
-            
-            # Defer response
-            await interaction.response.defer()
             
             # Play the song
             voice_client = self.voice_client[guild_id]
@@ -135,13 +133,13 @@ class MusicPlayer(commands.Cog):
             self.is_paused[guild_id] = False
             
             # Create now playing embed and buttons
-            await self.show_now_playing(interaction, guild_id)
+            await self.show_now_playing(interaction, guild_id, defer=True)
         
         except Exception as e:
             logger.error(f"Error playing song: {e}")
             await interaction.followup.send(f"❌ Error playing song: {str(e)}", ephemeral=True)
     
-    @music_group.command(name="stop", description="Stop music playback")
+    @app_commands.command(name="mstop", description="Stop music playback")
     async def stop(self, interaction: discord.Interaction):
         """Stop playback and disconnect"""
         guild_id = interaction.guild.id
@@ -174,31 +172,7 @@ class MusicPlayer(commands.Cog):
             logger.error(f"Error stopping music: {e}")
             await interaction.response.send_message(f"❌ Error: {str(e)}", ephemeral=True)
     
-    @music_group.command(name="list", description="Show available songs")
-    async def list_songs(self, interaction: discord.Interaction):
-        """List available songs in library"""
-        songs = self.get_songs()
-        
-        if not songs:
-            await interaction.response.send_message(
-                "❌ No music files found",
-                ephemeral=True
-            )
-            return
-        
-        # Create paginated list
-        song_list = "\n".join([f"**{i+1}.** {s.stem}" for i, s in enumerate(songs[:20])])
-        
-        embed = discord.Embed(
-            title="🎵 Music Library",
-            description=song_list,
-            color=discord.Color.blue()
-        )
-        embed.set_footer(text=f"Total: {len(songs)} songs | Use `/music play [song]` to play")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-    
-    async def show_now_playing(self, interaction: discord.Interaction, guild_id: int):
+    async def show_now_playing(self, interaction: discord.Interaction, guild_id: int, defer: bool = True):
         """Show now playing embed with control buttons"""
         if not self.queue[guild_id]:
             return
@@ -230,8 +204,12 @@ class MusicPlayer(commands.Cog):
         # Create control buttons
         view = MusicControlView(self, guild_id, interaction)
         
-        if interaction.response.is_done():
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        if defer:
+            if interaction.response.is_done():
+                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            else:
+                await interaction.response.defer()
+                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
         else:
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
     
@@ -256,6 +234,35 @@ class MusicPlayer(commands.Cog):
             self.is_paused[guild_id] = False
         except Exception as e:
             logger.error(f"Error playing song: {e}")
+
+
+
+
+class SongSelectionView(View):
+    """Buttons for selecting a song to play"""
+    
+    def __init__(self, music_cog: MusicPlayer, interaction: discord.Interaction, songs: list):
+        super().__init__(timeout=30)
+        self.music_cog = music_cog
+        self.interaction = interaction
+        self.songs = songs
+        
+        # Create buttons for each song
+        for i, song in enumerate(songs):
+            button = discord.ui.Button(
+                label=f"{i+1}. {song.stem[:20]}",
+                style=discord.ButtonStyle.primary,
+                custom_id=f"song_{i}"
+            )
+            button.callback = self.create_callback(i, song)
+            self.add_item(button)
+    
+    def create_callback(self, index: int, song: Path):
+        """Create callback for song selection"""
+        async def callback(button_interaction: discord.Interaction):
+            await button_interaction.response.defer()
+            await self.music_cog.play_selected_song(button_interaction, song)
+        return callback
 
 
 class MusicControlView(View):
