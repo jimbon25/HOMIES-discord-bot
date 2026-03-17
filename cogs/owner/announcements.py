@@ -137,10 +137,9 @@ class Announcements(commands.Cog):
                 # Create button for community server join
                 view = View()
                 join_button = Button(
-                    label="Join Community Server",
+                    label="➜ Join Community Server",
                     url="https://discord.gg/C5xz4RZ7",
-                    style=discord.ButtonStyle.primary,
-                    emoji="➜"
+                    style=discord.ButtonStyle.primary
                 )
                 view.add_item(join_button)
                 
