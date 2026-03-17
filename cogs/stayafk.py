@@ -20,8 +20,7 @@ class StayAFK(commands.Cog):
     @tasks.loop(minutes=1)
     async def check_alone(self):
         """Check if bot is alone in voice channel and auto-disconnect after timeout"""
-        if self.voice_clients:
-            logger.info(f"🔄 Checking alone status for {len(self.voice_clients)} voice connections")
+        logger.info(f"🔄 Checking voice status: {len(self.voice_clients)} voice connections tracked")
         
         for guild_id in list(self.voice_clients.keys()):
             try:
