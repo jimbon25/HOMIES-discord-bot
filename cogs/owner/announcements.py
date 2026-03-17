@@ -56,6 +56,9 @@ class Announcements(commands.Cog):
     async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no"):
         """Send global announcement"""
         
+        # Convert escaped newlines to actual newlines
+        message = message.replace('\\n', '\n')
+        
         # Check if user is owner
         owner_id = int(os.getenv('OWNER_ID'))
         additional_owners = os.getenv('ADDITIONAL_OWNER_IDS', '').split(',')
