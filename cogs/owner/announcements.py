@@ -7,6 +7,9 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Announcements(commands.Cog):
     def __init__(self, bot):
@@ -80,6 +83,7 @@ class Announcements(commands.Cog):
         sent_count = 0
         failed_count = 0
         skipped_count = 0
+        error_details = []
         is_test = test.lower() in ["yes", "true", "1"]
         
         # Determine which guilds to send to
@@ -97,7 +101,9 @@ class Announcements(commands.Cog):
             try:
                 channel = await self.bot.fetch_channel(channel_id)
             except Exception as e:
-                print(f"Error fetching channel {channel_id} for guild {guild.name}: {e}")
+                error_msg = f"Channel {channel_id} fetch failed: {e}"
+                logger.error(error_msg)
+                error_details.append(error_msg)
                 failed_count += 1
                 continue
             
@@ -142,7 +148,9 @@ class Announcements(commands.Cog):
                 sent_count += 1
                 
             except Exception as e:
-                print(f"Error sending announcement to {guild.name}: {e}")
+                error_msg = f"{guild.name}: {str(e)}"
+                logger.error(f"Error sending announcement to {error_msg}")
+                error_details.append(error_msg)
                 failed_count += 1
         
         # Send summary
@@ -157,6 +165,17 @@ class Announcements(commands.Cog):
         summary.add_field(name="✅ Sent", value=sent_count, inline=True)
         summary.add_field(name="❌ Failed", value=failed_count, inline=True)
         summary.add_field(name="⏭️ Skipped", value=skipped_count, inline=True)
+        
+        # Add error details if any
+        if error_details:
+            error_text = "\n".join(error_details[:5])  # Show first 5 errors
+            if len(error_details) > 5:
+                error_text += f"\n... and {len(error_details) - 5} more"
+            summary.add_field(
+                name="🔴 Error Details",
+                value=f"```\n{error_text}\n```",
+                inline=False
+            )
         
         if is_test and sent_count == 0 and skipped_count > 0:
             summary.add_field(
