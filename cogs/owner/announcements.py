@@ -48,9 +48,9 @@ class Announcements(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
     
-    @app_commands.command(name="announce", description="Send global announcement to all servers")
+    @app_commands.command(name="broadcastannounce", description="Send global announcement to all servers")
     @app_commands.describe(message="Announcement message")
-    async def announce(self, interaction: discord.Interaction, message: str):
+    async def broadcast_announce(self, interaction: discord.Interaction, message: str):
         """Send global announcement"""
         
         # Check if user is owner
