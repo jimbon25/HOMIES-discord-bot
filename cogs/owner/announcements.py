@@ -101,7 +101,7 @@ class Announcements(commands.Cog):
                 # Create announcement embed
                 embed = discord.Embed(
                     title="ANNOUNCEMENT",
-                    description=f"**{message}**",
+                    description=message,
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
