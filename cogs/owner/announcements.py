@@ -17,7 +17,10 @@ class Announcements(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config_file = "data/announce_channels.json"
+        self.settings_file = "data/announce_settings.json"
+        self.member_count = "2,785"  # Default fallback
         self.load_config()
+        self.load_settings()
     
     def load_config(self):
         """Load announcement channel configuration"""
@@ -26,6 +29,19 @@ class Announcements(commands.Cog):
                 self.announce_channels = json.load(f)
         else:
             self.announce_channels = {}
+    
+    def load_settings(self):
+        """Load announcement settings (member count, etc)"""
+        if os.path.exists(self.settings_file):
+            try:
+                with open(self.settings_file, 'r') as f:
+                    settings = json.load(f)
+                    self.member_count = settings.get("member_count", "2,785")
+            except Exception as e:
+                logger.error(f"Error loading settings: {e}")
+                self.member_count = "2,785"
+        else:
+            self.member_count = "2,785"
     
     def save_config(self):
         """Save announcement channel configuration"""
@@ -148,13 +164,12 @@ class Announcements(commands.Cog):
                 if image:
                     embed.set_image(url=f"attachment://{image.filename}")
                 
-                # Add server info with formatted member count
-                # Using dummy member count for consistent template
-                formatted_members = "2,785"
+                # Load current member count from settings
+                self.load_settings()
                 
                 embed.add_field(
                     name="Server",
-                    value=f"Homies Hub | Members {formatted_members}",
+                    value=f"Homies Hub | Members {self.member_count}",
                     inline=True
                 )
                 
