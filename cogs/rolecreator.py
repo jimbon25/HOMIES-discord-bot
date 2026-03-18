@@ -73,8 +73,7 @@ class RoleCreator(commands.Cog):
             # Create role
             new_role = await interaction.guild.create_role(
                 name=name,
-                color=role_color,
-                reason=f"Created by {interaction.user.name}"
+                color=role_color
             )
             
             # Send confirmation
