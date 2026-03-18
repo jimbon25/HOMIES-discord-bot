@@ -179,9 +179,9 @@ async def on_ready():
     )
 
 @bot.tree.command(name="announce", description="Send announcement to a specific channel")
-@app_commands.describe(message="Announcement message content", channel="Target channel for announcement", title="Announcement title (optional)", show_sender="Show sender name in footer (default: no)", role="Role to mention (optional)", format="Message format: embed or plain (default: embed)", text_size="Text size for plain format: normal, medium, large (default: normal)", file1="File attachment 1 (optional)", file2="File attachment 2 (optional)", file3="File attachment 3 (optional)")
+@app_commands.describe(message="Announcement message content", channel="Target channel for announcement", title="Announcement title (optional)", show_sender="Show sender name in footer (default: no)", role="Role to mention (optional)", user="User to mention (optional)", format="Message format: embed or plain (default: embed)", text_size="Text size for plain format: normal, medium, large (default: normal)", image="Image file to attach to announcement (optional)")
 @app_commands.checks.has_permissions(administrator=True)
-async def announce(interaction: discord.Interaction, message: str, channel: discord.TextChannel, title: str = "", show_sender: bool = False, role: discord.Role = None, format: str = "embed", text_size: str = "normal", file1: discord.Attachment = None, file2: discord.Attachment = None, file3: discord.Attachment = None):
+async def announce(interaction: discord.Interaction, message: str, channel: discord.TextChannel, title: str = "", show_sender: bool = False, role: discord.Role = None, user: discord.User = None, format: str = "embed", text_size: str = "normal", image: discord.Attachment = None):
     """Send an announcement to a specific channel."""
     
     # Defer immediately to prevent timeout
@@ -196,30 +196,30 @@ async def announce(interaction: discord.Interaction, message: str, channel: disc
             await interaction.followup.send("❌ Invalid text size. Use 'normal', 'medium', or 'large'", ephemeral=True)
             return
         
-        # Collect all file attachments
-        files_list = [file1, file2, file3]
-        attachments = [f for f in files_list if f is not None]
-        
-        # Validate files if provided
-        valid_formats = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.txt', '.doc', '.docx', '.zip', '.mp4', '.mp3')
-        for attachment in attachments:
-            if not attachment.filename.lower().endswith(valid_formats):
-                await interaction.followup.send(f"❌ File '{attachment.filename}' has unsupported format. Supported: Images, PDF, documents, audio, video, ZIP", ephemeral=True)
+        # Validate image if provided
+        image_file = None
+        if image:
+            valid_formats = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
+            if image.filename.lower().endswith(valid_formats):
+                try:
+                    # Download image data
+                    image_data = await image.read()
+                    image_file = await image.to_file()
+                except Exception as e:
+                    await interaction.followup.send(f"❌ Failed to download image: {str(e)}", ephemeral=True)
+                    return
+            else:
+                await interaction.followup.send(
+                    "❌ Invalid image format. Only PNG, JPG, GIF, and WebP are supported",
+                    ephemeral=True
+                )
                 return
-            
-            # Check file size (max 25MB each)
-            if attachment.size > 25 * 1024 * 1024:
-                await interaction.followup.send(f"❌ File '{attachment.filename}' exceeds 25MB limit", ephemeral=True)
-                return
-        
-        # Download files
-        discord_files = []
-        for attachment in attachments:
-            file = await attachment.to_file()
-            discord_files.append(file)
         
         content = ""
-        if role:
+        if user:
+            # Mention specific user
+            content = user.mention + " "
+        elif role:
             # Special handling for @everyone role to prevent double mention
             is_everyone = role.is_default() or role.name == "@everyone" or role.id == interaction.guild.id
             
@@ -236,12 +236,17 @@ async def announce(interaction: discord.Interaction, message: str, channel: disc
                 description=message,
                 color=discord.Color.blue()
             )
+            
+            # Add image to embed if provided
+            if image:
+                embed.set_image(url=f"attachment://{image.filename}")
+            
             if show_sender:
                 embed.set_footer(text=f"Sent by: {interaction.user.name}")
             
-            # Send with files if any
-            if discord_files:
-                await channel.send(content=content, embed=embed, files=discord_files)
+            # Send with image file if any
+            if image_file:
+                await channel.send(content=content, embed=embed, file=image_file)
             else:
                 await channel.send(content=content, embed=embed)
         else:  # plain format
@@ -256,16 +261,16 @@ async def announce(interaction: discord.Interaction, message: str, channel: disc
             if show_sender:
                 plain_message += f"\n\n*Sent by: {interaction.user.name}*"
             
-            # Send with files if any
-            if discord_files:
-                await channel.send(content=content + plain_message, files=discord_files)
+            # Send with image file if any
+            if image_file:
+                await channel.send(content=content + plain_message, file=image_file)
             else:
                 await channel.send(content=content + plain_message)
         
-        # Send confirmation with file count
+        # Send confirmation with image info
         confirm_msg = f"✅ Announcement successfully sent to {channel.mention}"
-        if attachments:
-            confirm_msg += f" with {len(attachments)} file(s)"
+        if image:
+            confirm_msg += f" with image"
         
         await interaction.followup.send(confirm_msg, ephemeral=True)
     
