@@ -182,10 +182,7 @@ class Announcements(commands.Cog):
                 
                 # Prepare file if image provided
                 if image:
-                    file = discord.File(
-                        await image.to_file(),
-                        filename=image.filename
-                    )
+                    file = await image.to_file()
                     await channel.send(content=mention_text, embed=embed, view=view, file=file, allowed_mentions=discord.AllowedMentions(everyone=True))
                 else:
                     await channel.send(content=mention_text, embed=embed, view=view, allowed_mentions=discord.AllowedMentions(everyone=True))
