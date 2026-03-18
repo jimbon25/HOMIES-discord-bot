@@ -57,9 +57,10 @@ class Announcements(commands.Cog):
         message="Announcement message",
         test="Test mode - only send to current server (yes/no)",
         mention="Mention @everyone or @here (none/everyone/here)",
+        title="Custom title for announcement (optional)",
         image="Image file to attach to announcement (optional)"
     )
-    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no", mention: str = "none", image: Optional[discord.Attachment] = None):
+    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no", mention: str = "none", title: str = "", image: Optional[discord.Attachment] = None):
         """Send global announcement"""
         
         # Convert escaped newlines to actual newlines
@@ -135,8 +136,9 @@ class Announcements(commands.Cog):
             
             try:
                 # Create announcement embed
+                embed_title = title if title else "BOT UPDATE ANNOUNCEMENT"
                 embed = discord.Embed(
-                    title="BOT UPDATE ANNOUNCEMENT",
+                    title=embed_title,
                     description=message,
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
@@ -147,22 +149,17 @@ class Announcements(commands.Cog):
                     embed.set_image(url=f"attachment://{image.filename}")
                 
                 # Add server info with formatted member count
-                # Using dummy member count for consistent template (2,758)
+                # Using dummy member count for consistent template
                 formatted_members = "2,785"
                 
                 embed.add_field(
                     name="Server",
-                    value="Homies Hub",
-                    inline=True
-                )
-                embed.add_field(
-                    name="Members",
-                    value=formatted_members,
+                    value=f"Homies Hub | Members {formatted_members}",
                     inline=True
                 )
                 
                 # Add community server link (removed - will use button instead)
-                embed.set_footer(text=f"Global Broadcast | Server: Homies Hub")
+                embed.set_footer(text="Announcements | Homies Hub")
                 
                 # Create button for community server join
                 view = View()
