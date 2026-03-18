@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 import logging
+from typing import Optional
 from utils import safe_save_json
 
 logger = logging.getLogger(__name__)
@@ -55,13 +56,38 @@ class Announcements(commands.Cog):
     @app_commands.describe(
         message="Announcement message",
         test="Test mode - only send to current server (yes/no)",
-        mention="Mention @everyone or @here (none/everyone/here)"
+        mention="Mention @everyone or @here (none/everyone/here)",
+        image="Image file to attach to announcement (optional)"
     )
-    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no", mention: str = "none"):
+    async def broadcast_announce(self, interaction: discord.Interaction, message: str, test: str = "no", mention: str = "none", image: Optional[discord.Attachment] = None):
         """Send global announcement"""
         
         # Convert escaped newlines to actual newlines
         message = message.replace('\\n', '\n')
+        
+        # Validate image if provided
+        if image:
+            valid_formats = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+            if image.filename.lower().endswith(valid_formats):
+                try:
+                    # Download image data
+                    image_data = await image.read()
+                except Exception as e:
+                    embed = discord.Embed(
+                        title="❌ Error",
+                        description=f"Failed to download image: {str(e)}",
+                        color=discord.Color.red()
+                    )
+                    await interaction.response.send_message(embed=embed, ephemeral=True)
+                    return
+            else:
+                embed = discord.Embed(
+                    title="❌ Invalid Image Format",
+                    description="Only PNG, JPG, GIF, and WebP are supported",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
         
         # Check if user is owner
         owner_id = int(os.getenv('OWNER_ID'))
@@ -110,15 +136,19 @@ class Announcements(commands.Cog):
             try:
                 # Create announcement embed
                 embed = discord.Embed(
-                    title="EID MUBARAK",
+                    title="BOT UPDATE ANNOUNCEMENT",
                     description=message,
                     color=discord.Color.blue(),
                     timestamp=datetime.now()
                 )
                 
+                # Add image to embed if provided
+                if image:
+                    embed.set_image(url=f"attachment://{image.filename}")
+                
                 # Add server info with formatted member count
                 # Using dummy member count for consistent template (2,758)
-                formatted_members = "2,764"
+                formatted_members = "2,785"
                 
                 embed.add_field(
                     name="Server",
@@ -132,7 +162,7 @@ class Announcements(commands.Cog):
                 )
                 
                 # Add community server link (removed - will use button instead)
-                embed.set_footer(text=f"Global Broadcast • Server: Homies Hub")
+                embed.set_footer(text=f"Global Broadcast | Server: Homies Hub")
                 
                 # Create button for community server join
                 view = View()
@@ -150,7 +180,15 @@ class Announcements(commands.Cog):
                 elif mention.lower() in ["here", "@here"]:
                     mention_text = "@here\n"
                 
-                await channel.send(content=mention_text, embed=embed, view=view, allowed_mentions=discord.AllowedMentions(everyone=True))
+                # Prepare file if image provided
+                if image:
+                    file = discord.File(
+                        await image.to_file(),
+                        filename=image.filename
+                    )
+                    await channel.send(content=mention_text, embed=embed, view=view, file=file, allowed_mentions=discord.AllowedMentions(everyone=True))
+                else:
+                    await channel.send(content=mention_text, embed=embed, view=view, allowed_mentions=discord.AllowedMentions(everyone=True))
                 sent_count += 1
                 
             except Exception as e:
@@ -179,6 +217,10 @@ class Announcements(commands.Cog):
         elif mention.lower() in ["here", "@here"]:
             mention_display = "@here"
         summary.add_field(name="📢 Mention", value=mention_display, inline=True)
+        
+        # Show image info if attached
+        if image:
+            summary.add_field(name="🖼️ Image", value=f"✅ {image.filename}", inline=True)
         
         # Add error details if any
         if error_details:
