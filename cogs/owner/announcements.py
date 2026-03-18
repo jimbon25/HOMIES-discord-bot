@@ -159,7 +159,7 @@ class Announcements(commands.Cog):
                 )
                 
                 # Add community server link (removed - will use button instead)
-                embed.set_footer(text="Announcements | Homies Hub")
+                embed.set_footer(text="Announcements")
                 
                 # Create button for community server join
                 view = View()
