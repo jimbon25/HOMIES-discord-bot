@@ -67,7 +67,7 @@ class Announcements(commands.Cog):
         
         # Validate image if provided
         if image:
-            valid_formats = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+            valid_formats = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
             if image.filename.lower().endswith(valid_formats):
                 try:
                     # Download image data
