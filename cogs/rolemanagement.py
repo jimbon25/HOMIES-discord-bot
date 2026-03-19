@@ -19,8 +19,11 @@ class RoleManagement(commands.Cog):
     async def add_role(self, interaction: discord.Interaction, member: discord.Member, role: discord.Role):
         """Add a role to a member"""
         
-        # Check if user has permission to manage roles
-        if not interaction.user.guild_permissions.manage_roles:
+        # Check if user has permission to manage roles OR is whitelisted
+        has_permission = interaction.user.guild_permissions.manage_roles
+        is_whitelisted = self.bot.is_user_whitelisted(interaction.user.id)
+        
+        if not (has_permission or is_whitelisted):
             embed = discord.Embed(
                 title="❌ Permission Denied",
                 description="You don't have permission to manage roles!",
@@ -80,8 +83,11 @@ class RoleManagement(commands.Cog):
     async def del_role(self, interaction: discord.Interaction, member: discord.Member, role: discord.Role):
         """Remove a role from a member"""
         
-        # Check if user has permission to manage roles
-        if not interaction.user.guild_permissions.manage_roles:
+        # Check if user has permission to manage roles OR is whitelisted
+        has_permission = interaction.user.guild_permissions.manage_roles
+        is_whitelisted = self.bot.is_user_whitelisted(interaction.user.id)
+        
+        if not (has_permission or is_whitelisted):
             embed = discord.Embed(
                 title="❌ Permission Denied",
                 description="You don't have permission to manage roles!",

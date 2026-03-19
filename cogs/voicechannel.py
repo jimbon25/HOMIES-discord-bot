@@ -6,14 +6,34 @@ import json
 import os
 from datetime import datetime, timedelta
 from collections import defaultdict
+from dotenv import load_dotenv
 from utils import safe_save_json
+
+# Load env variables
+load_dotenv()
 
 class VoiceChannelManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.vc_data_file = "data/voice_channels.json"
         self.rename_cooldowns = defaultdict(lambda: None)  # Track rename cooldowns per user
+        self.whitelist_user_ids = self._load_whitelist()
         self.load_vc_data()
+    
+    def _load_whitelist(self):
+        """Load whitelist user IDs from .env"""
+        whitelist_str = os.getenv('WHITELIST_USER_IDS', '')
+        if whitelist_str:
+            try:
+                return [int(uid.strip()) for uid in whitelist_str.split(',') if uid.strip()]
+            except ValueError:
+                print("Warning: Invalid WHITELIST_USER_IDS in .env")
+                return []
+        return []
+    
+    def is_user_whitelisted(self, user_id: int) -> bool:
+        """Check if user is whitelisted for admin voice channel access"""
+        return user_id in self.whitelist_user_ids
     
     def load_vc_data(self):
         """Load voice channel data"""
@@ -133,7 +153,8 @@ class VoiceChannelManager(commands.Cog):
         
         # Check permissions
         if not (self.is_channel_owner(interaction.user.id, channel.id) or 
-                interaction.user.guild_permissions.administrator):
+                interaction.user.guild_permissions.administrator or
+                self.is_user_whitelisted(interaction.user.id)):
             embed = discord.Embed(
                 title="❌ No Permission",
                 description="Only channel owner or server admin can rename this channel",
@@ -205,7 +226,8 @@ class VoiceChannelManager(commands.Cog):
         
         # Check permissions
         if not (self.is_channel_owner(interaction.user.id, channel.id) or 
-                interaction.user.guild_permissions.administrator):
+                interaction.user.guild_permissions.administrator or
+                self.is_user_whitelisted(interaction.user.id)):
             await interaction.response.send_message(
                 "❌ You don't have permission to modify this channel",
                 ephemeral=True
@@ -252,7 +274,8 @@ class VoiceChannelManager(commands.Cog):
         
         # Check permissions
         if not (self.is_channel_owner(interaction.user.id, channel.id) or 
-                interaction.user.guild_permissions.administrator):
+                interaction.user.guild_permissions.administrator or
+                self.is_user_whitelisted(interaction.user.id)):
             await interaction.response.send_message(
                 "❌ You don't have permission to lock/unlock this channel",
                 ephemeral=True
@@ -391,8 +414,9 @@ class VoiceChannelManager(commands.Cog):
         # Check permissions (owner or admin)
         is_owner = self.is_channel_owner(interaction.user.id, channel.id)
         is_admin = interaction.user.guild_permissions.administrator
+        is_whitelisted = self.is_user_whitelisted(interaction.user.id)
         
-        if not (is_owner or is_admin):
+        if not (is_owner or is_admin or is_whitelisted):
             embed = discord.Embed(
                 title="❌ No Permission",
                 description="Only channel owner or server admin can kick members",
@@ -457,8 +481,9 @@ class VoiceChannelManager(commands.Cog):
         # Check permissions (owner or admin)
         is_owner = self.is_channel_owner(interaction.user.id, channel.id)
         is_admin = interaction.user.guild_permissions.administrator
+        is_whitelisted = self.is_user_whitelisted(interaction.user.id)
         
-        if not (is_owner or is_admin):
+        if not (is_owner or is_admin or is_whitelisted):
             embed = discord.Embed(
                 title="❌ No Permission",
                 description="Only channel owner or server admin can mute members",

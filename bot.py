@@ -20,6 +20,22 @@ class AnnouncerBot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix="?", intents=intents)
+        self.whitelist_user_ids = self._load_whitelist()
+
+    def _load_whitelist(self):
+        """Load whitelist user IDs from .env"""
+        whitelist_str = os.getenv('WHITELIST_USER_IDS', '')
+        if whitelist_str:
+            try:
+                return [int(uid.strip()) for uid in whitelist_str.split(',') if uid.strip()]
+            except ValueError:
+                logger.warning("Warning: Invalid WHITELIST_USER_IDS in .env")
+                return []
+        return []
+    
+    def is_user_whitelisted(self, user_id: int) -> bool:
+        """Check if user is whitelisted for admin command access"""
+        return user_id in self.whitelist_user_ids
 
     def get_prefix_file(self, guild_id: int) -> str:
         """Get prefix settings file path for guild"""
@@ -180,9 +196,19 @@ async def on_ready():
 
 @bot.tree.command(name="announce", description="Send announcement to a specific channel")
 @app_commands.describe(message="Announcement message content", channel="Target channel for announcement", title="Announcement title (optional)", show_sender="Show sender name in footer (default: no)", role="Role to mention (optional)", user="User to mention (optional)", format="Message format: embed or plain (default: embed)", text_size="Text size for plain format: normal, medium, large (default: normal)", image="Image file to attach to announcement (optional)")
-@app_commands.checks.has_permissions(administrator=True)
 async def announce(interaction: discord.Interaction, message: str, channel: discord.TextChannel, title: str = "", show_sender: bool = False, role: discord.Role = None, user: discord.User = None, format: str = "embed", text_size: str = "normal", image: discord.Attachment = None):
     """Send an announcement to a specific channel."""
+    
+    # Check permission: admin OR whitelisted user
+    is_admin = interaction.user.guild_permissions.administrator
+    is_whitelisted = interaction.client.is_user_whitelisted(interaction.user.id)
+    
+    if not (is_admin or is_whitelisted):
+        await interaction.response.send_message(
+            "❌ You don't have permission to use this command. (Admin only)",
+            ephemeral=True
+        )
+        return
     
     # Defer immediately to prevent timeout
     await interaction.response.defer(ephemeral=True)

@@ -152,7 +152,7 @@ class Announcements(commands.Cog):
             
             try:
                 # Create announcement embed
-                embed_title = title if title else "BOT UPDATE ANNOUNCEMENT"
+                embed_title = title if title else "📢"
                 embed = discord.Embed(
                     title=embed_title,
                     description=message,
