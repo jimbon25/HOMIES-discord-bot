@@ -299,6 +299,24 @@ async def announce(interaction: discord.Interaction, message: str, channel: disc
             confirm_msg += f" with image"
         
         await interaction.followup.send(confirm_msg, ephemeral=True)
+        
+        # Log to modlog
+        modlog_cog = bot.get_cog('ModerationLog')
+        if modlog_cog:
+            log_reason = f"Sent announcement to {channel.mention}: {message[:100]}"
+            if role:
+                log_reason += f" (with @{role.name})"
+            if user:
+                log_reason += f" (with @{user.name})"
+            if image:
+                log_reason += " (with image)"
+            await modlog_cog.log_action(
+                interaction.guild,
+                "announce",
+                interaction.user,
+                interaction.user,
+                log_reason
+            )
     
     except discord.Forbidden:
         await interaction.followup.send("❌ Bot doesn't have permission to send messages in that channel", ephemeral=True)

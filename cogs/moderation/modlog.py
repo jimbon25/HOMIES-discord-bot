@@ -108,6 +108,12 @@ class ModerationLog(commands.Cog):
         elif action == "delrole":
             color = discord.Color.purple()
             emoji = "➖"
+        elif action == "clear":
+            color = discord.Color.red()
+            emoji = "🗑️"
+        elif action == "announce":
+            color = discord.Color.gold()
+            emoji = "📢"
         else:
             color = discord.Color.blurple()
             emoji = "📋"

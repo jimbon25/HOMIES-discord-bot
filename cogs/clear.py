@@ -17,7 +17,8 @@ class ClearMessages(commands.Cog):
         amount="Number of messages to delete (max 300)",
         channel="Target channel to clear (leave empty for current channel)",
         bot="Include bot messages (true/false, default: false)",
-        user="Delete only messages from this user (optional)"
+        user="Delete only messages from this user (optional)",
+        contains_embed="Filter by embed (true=only with embed, false=without embed, default: no filter)"
     )
     async def clear_messages(
         self, 
@@ -25,7 +26,8 @@ class ClearMessages(commands.Cog):
         amount: int,
         channel: discord.TextChannel = None,
         bot: bool = False,
-        user: discord.User = None
+        user: discord.User = None,
+        contains_embed: bool = None
     ):
         """Clear/purge messages from a channel"""
         
@@ -91,8 +93,18 @@ class ClearMessages(commands.Cog):
                 if user is not None and message.author.id != user.id:
                     continue
                 
+                # Filter by embed if specified
+                if contains_embed is not None:
+                    has_embed = len(message.embeds) > 0
+                    if contains_embed is True and not has_embed:
+                        # Skip messages without embed if we only want embed messages
+                        continue
+                    elif contains_embed is False and has_embed:
+                        # Skip messages with embed if we want non-embed messages
+                        continue
+                
                 # Don't delete interaction responses that are still ephemeral
-                if message.interaction is not None:
+                if message.interaction_metadata is not None:
                     continue
                 
                 messages_to_delete.append(message)
@@ -140,6 +152,12 @@ class ClearMessages(commands.Cog):
             if user:
                 filter_info.append(f"From {user.mention}")
             
+            if contains_embed is not None:
+                if contains_embed:
+                    filter_info.append("Only messages with embed")
+                else:
+                    filter_info.append("Only messages without embed")
+            
             embed = discord.Embed(
                 title="✅ Messages Cleared",
                 description=f"Successfully deleted **{deleted_count}** messages from {channel.mention}",
@@ -156,6 +174,24 @@ class ClearMessages(commands.Cog):
             embed.set_footer(text=f"Executed by: {interaction.user.name}")
             
             await interaction.followup.send(embed=embed, ephemeral=True)
+            
+            # Log to modlog
+            modlog_cog = self.bot.get_cog('ModerationLog')
+            if modlog_cog:
+                log_reason = f"Deleted {deleted_count} messages from {channel.mention}"
+                if user:
+                    log_reason += f" by {user.mention}"
+                if bot is True:
+                    log_reason += " (bot only)"
+                if contains_embed is not None:
+                    log_reason += f" (embed: {'only with' if contains_embed else 'without'})"
+                await modlog_cog.log_action(
+                    interaction.guild,
+                    "clear",
+                    interaction.user,
+                    interaction.user,
+                    log_reason
+                )
             
         except discord.Forbidden:
             embed = discord.Embed(
