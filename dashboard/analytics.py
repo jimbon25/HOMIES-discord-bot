@@ -1,8 +1,11 @@
 """Analytics Engine - Compute metrics and insights"""
 import json
 import os
+import logging
 from datetime import datetime
 from typing import Dict, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 class Analytics:
     def __init__(self, data_file: str = "data/stats.json"):
@@ -20,8 +23,12 @@ class Analytics:
             data_file = self.data_file
         
         if os.path.exists(data_file):
-            with open(data_file, 'r') as f:
-                return json.load(f)
+            try:
+                with open(data_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load analytics data: {e}")
+                return {}
         return {}
     
     def get_member_stats(self, guild_id: int = None) -> Dict:
@@ -92,7 +99,8 @@ class Analytics:
                 with open(uptime_file, 'r') as f:
                     data = json.load(f)
                     return data.get("bot_uptime_seconds", 0)
-            except:
+            except Exception as e:
+                logger.error(f"Failed to load global uptime data: {e}")
                 return 0
         return 0
     

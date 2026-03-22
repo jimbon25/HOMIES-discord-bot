@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Dict, Optional
 from utils import safe_save_json
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class ActivityTracker:
     def __init__(self, data_file: str = "data/stats.json"):
         self.data_file = data_file
@@ -63,10 +67,14 @@ class ActivityTracker:
             
             data_file = self.get_guild_data_file(guild_id)
             if os.path.exists(data_file):
-                with open(data_file, 'r') as f:
-                    data = json.load(f)
-                    self.cache[guild_id] = data  # Cache it
-                    return data.copy()
+                try:
+                    with open(data_file, 'r') as f:
+                        data = json.load(f)
+                        self.cache[guild_id] = data  # Cache it
+                        return data.copy()
+                except Exception as e:
+                    logger.error(f"❌ Gagal memuat data statistik untuk guild {guild_id}: {e}")
+                    return self.get_default_structure()
         
         return self.get_default_structure()
     
@@ -176,7 +184,8 @@ class ActivityTracker:
             try:
                 with open(uptime_file, 'r') as f:
                     return json.load(f)
-            except:
+            except Exception as e:
+                logger.error(f"❌ Gagal memuat data uptime: {e}")
                 return {}
         return {}
     

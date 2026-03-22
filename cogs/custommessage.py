@@ -75,20 +75,24 @@ class CustomMessageModal(Modal, title="Create Custom Message"):
             )
 
 
-class CustomMessageManager(commands.Cog):
+import logging
+
+logger = logging.getLogger(__name__)
+
+class CustomMessage(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.custom_msg_dir = "data/custom_messages"
         self.ensure_dir()
-    
+
     def ensure_dir(self):
         """Ensure custom messages directory exists"""
         Path(self.custom_msg_dir).mkdir(parents=True, exist_ok=True)
-    
+
     def get_custom_message_file(self, guild_id: int) -> str:
         """Get custom messages file path for guild"""
         return f"{self.custom_msg_dir}/custom_messages_{guild_id}.json"
-    
+
     def load_custom_messages(self, guild_id: int) -> dict:
         """Load custom messages for guild"""
         filepath = self.get_custom_message_file(guild_id)
@@ -96,7 +100,8 @@ class CustomMessageManager(commands.Cog):
             try:
                 with open(filepath, 'r') as f:
                     return json.load(f)
-            except:
+            except Exception as e:
+                logger.error(f"❌ Gagal memuat pesan kustom untuk guild {guild_id}: {e}")
                 return {}
         return {}
     
@@ -270,4 +275,4 @@ class CustomMessageManager(commands.Cog):
 
 async def setup(bot):
     """Load the cog"""
-    await bot.add_cog(CustomMessageManager(bot))
+    await bot.add_cog(CustomMessage(bot))

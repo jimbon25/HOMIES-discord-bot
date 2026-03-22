@@ -22,13 +22,12 @@ class Author(commands.Cog):
             inline=False
         )
         
-        # Fetch owner dari OWNER_ID
+        # Fetch owner secara otomatis
         try:
-            owner_id = int(os.getenv("OWNER_ID"))
-            owner = await self.bot.fetch_user(owner_id)
-            owner_mention = owner.mention
-        except:
-            owner_mention = "@nikdi99"
+            app_info = await self.bot.application_info()
+            owner_mention = app_info.owner.mention
+        except Exception:
+            owner_mention = "Developer"
         
         embed1.add_field(
             name="Author",

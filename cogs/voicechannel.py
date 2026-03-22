@@ -9,6 +9,10 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from utils import safe_save_json
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Load env variables
 load_dotenv()
 
@@ -43,8 +47,12 @@ class VoiceChannelManager(commands.Cog):
     def get_vc_data(self):
         """Get voice channel data"""
         if os.path.exists(self.vc_data_file):
-            with open(self.vc_data_file, 'r') as f:
-                return json.load(f)
+            try:
+                with open(self.vc_data_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load voice channel data: {e}")
+                return {}
         return {}
     
     def save_vc_data(self, data):
