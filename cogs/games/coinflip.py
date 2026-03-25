@@ -141,11 +141,11 @@ class CoinFlip(commands.Cog):
                 self.cf_cooldowns[user_id] = current_time # Update cooldown
                 
                 # Animation Logic
-                msg = await message.channel.send("🪙 | **Melambungkan koin...**")
+                msg = await message.channel.send(f"🪙 | **Melambungkan {amount:,} cash...**")
                 import asyncio
                 
                 await asyncio.sleep(0.7)
-                await msg.edit(content="🔄 | **Memutar di udara...**")
+                await msg.edit(content=f"🔄 | **Koin {amount:,} cash memutar di udara...**")
                 await asyncio.sleep(0.7)
 
                 # Game Logic
@@ -153,14 +153,13 @@ class CoinFlip(commands.Cog):
                 if win:
                     winnings = amount
                     self.update_balance(user_id, winnings)
-                    new_balance = self.get_user_balance(user_id)
                     
-                    await msg.edit(content=f"🎉 | **MENANG!** Kamu mendapatkan **{amount:,}** cash. (Saldo: `{new_balance:,}`)")
+                    total_win = amount * 2
+                    await msg.edit(content=f"🎉 | **MENANG!** Total kemenangan: **{total_win:,}** cash.")
                 else:
                     self.update_balance(user_id, -amount)
-                    new_balance = self.get_user_balance(user_id)
                     
-                    await msg.edit(content=f"💸 | **KALAH.** Kamu kehilangan **{amount:,}** cash. (Saldo: `{new_balance:,}`)")
+                    await msg.edit(content=f"💸 | **KALAH.** Kamu kehilangan **{amount:,}** cash.")
 
             except ValueError:
                 await message.channel.send(f"⚠️ Nominal harus berupa angka! Contoh: `{current_prefix}cf 1000`")
