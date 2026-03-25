@@ -11,6 +11,86 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class ConfirmationView(discord.ui.View):
+    def __init__(self, initiator, target, amount, action_type, cog):
+        super().__init__(timeout=30)
+        self.initiator = initiator
+        self.target = target
+        self.amount = amount
+        self.action_type = action_type # 'pay' or 'givecash'
+        self.cog = cog
+        self.message = None
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        try:
+            await self.message.edit(view=self)
+        except:
+            pass
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, emoji="✅")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.initiator.id:
+            await interaction.response.send_message("❌ Hanya pengirim yang bisa mengonfirmasi!", ephemeral=True)
+            return
+
+        for child in self.children:
+            child.disabled = True
+        
+        # Get existing embed to modify it
+        embed = interaction.message.embeds[0]
+        
+        # Execute the transaction
+        if self.action_type == 'pay':
+            sender_balance = self.cog.get_user_balance(str(self.initiator.id))
+            if self.amount > sender_balance:
+                embed.title = "❌ Transaksi Gagal"
+                embed.description = f"Saldo {self.initiator.mention} tidak mencukupi."
+                embed.color = discord.Color.red()
+                await interaction.response.edit_message(embed=embed, view=self)
+                return
+            
+            self.cog.update_balance(str(self.initiator.id), -self.amount)
+            self.cog.update_balance(str(self.target.id), self.amount)
+            
+            embed.title = "✅ Pembayaran Berhasil"
+            embed.description = f"**{self.amount:,}** cash telah dikirim ke {self.target.mention}."
+            embed.color = discord.Color.green()
+            embed.set_footer(text=f"Status: Sukses | ID: {interaction.id}")
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+        
+        elif self.action_type == 'givecash':
+            self.cog.update_balance(str(self.target.id), self.amount)
+            
+            embed.title = "✅ Owner Bypass Berhasil"
+            embed.description = f"**{self.amount:,}** cash gratis telah di-generate untuk {self.target.mention}."
+            embed.color = discord.Color.green()
+            embed.set_footer(text="Status: Owner Authorized")
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+        
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="✖️")
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.initiator.id:
+            await interaction.response.send_message("❌ Hanya pengirim yang bisa membatalkan!", ephemeral=True)
+            return
+
+        for child in self.children:
+            child.disabled = True
+        
+        embed = interaction.message.embeds[0]
+        embed.title = "❌ Transaksi Dibatalkan"
+        embed.color = discord.Color.red()
+        embed.description = "Permintaan transaksi telah dibatalkan oleh pengirim."
+        embed.set_footer(text="Status: Dibatalkan")
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.stop()
+
 class CoinFlip(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -230,7 +310,7 @@ class CoinFlip(commands.Cog):
                         await message.channel.send("❌ Kamu tidak bisa mengirim uang ke diri sendiri!")
                         return
 
-                    # Find the amount in parts (it might not be at index 2 if mention is at the end)
+                    # Find the amount in parts
                     amount = None
                     for part in parts:
                         if part.isdigit():
@@ -246,11 +326,18 @@ class CoinFlip(commands.Cog):
                         await message.channel.send(f"❌ Saldo kamu tidak cukup! (Sisa: {sender_balance:,} cash)")
                         return
 
-                    # Perform transfer
-                    self.update_balance(user_id, -amount)
-                    self.update_balance(str(target_user.id), amount)
+                    # Confirmation logic
+                    embed = discord.Embed(
+                        title="📜 Konfirmasi Pembayaran",
+                        description=f"Apakah kamu yakin ingin mengirim **{amount:,}** cash kepada {target_user.mention}?",
+                        color=discord.Color.yellow()
+                    )
+                    embed.add_field(name="Penerima", value=target_user.name, inline=True)
+                    embed.add_field(name="Jumlah", value=f"{amount:,} cash", inline=True)
                     
-                    await message.channel.send(f"💸 {message.author.mention} berhasil mengirim **{amount:,}** cash kepada {target_user.mention}!")
+                    view = ConfirmationView(message.author, target_user, amount, 'pay', self)
+                    view.message = await message.channel.send(embed=embed, view=view)
+                    
                 except Exception as e:
                     logger.error(f"Error in pay command: {e}")
                     await message.channel.send("⚠️ Format salah! Gunakan: `<prefix>pay @user <nominal>`")
@@ -266,10 +353,23 @@ class CoinFlip(commands.Cog):
             parts = content.split()
             if len(parts) >= 3 and message.mentions:
                 try:
-                    target_id = str(message.mentions[0].id)
-                    amount = int(parts[2])
-                    self.update_balance(target_id, amount)
-                    await message.channel.send(f"💎 **[OWNER BYPASS]** Berhasil men-generate **{amount:,}** cash gratis untuk {message.mentions[0].mention}")
+                    target_user = message.mentions[0]
+                    amount = None
+                    for part in parts:
+                        if part.isdigit():
+                            amount = int(part)
+                            break
+
+                    if amount is None: return
+
+                    # Confirmation logic for owner
+                    embed = discord.Embed(
+                        title="💎 Owner Bypass Confirmation",
+                        description=f"Generate **{amount:,}** cash gratis untuk {target_user.mention}?",
+                        color=discord.Color.purple()
+                    )
+                    view = ConfirmationView(message.author, target_user, amount, 'givecash', self)
+                    view.message = await message.channel.send(embed=embed, view=view)
                 except:
                     pass
 
