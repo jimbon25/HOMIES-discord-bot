@@ -159,6 +159,18 @@ class HelpCommand(commands.Cog):
             inline=False
         )
         
+        # Coin Flip Game & Economy
+        embed.add_field(
+            name="🪙 Coin Flip & Economy",
+            value="`mahoraga prefix <char>` - Set game prefix (e.g. `mahoraga prefix h`)\n"
+                  "`<prefix>cf <nominal>` - Play coin flip (e.g. `hcf 1000` or `hcf all`)\n"
+                  "`<prefix>daily` - Claim **10,000** cash (1x per 24h)\n"
+                  "`<prefix>work` - Work to earn random cash\n"
+                  "`<prefix>cash` - Check your current balance\n"
+                  "💰 *Winnings are 2x your bet!*",
+            inline=False
+        )
+        
         embed.add_field(
             name="Tips",
             value="• Use `/announce format:plain text_size:large` for big announcements\n"

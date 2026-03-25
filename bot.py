@@ -188,7 +188,7 @@ async def on_ready():
         status=discord.Status.online,
         activity=discord.Activity(
             type=discord.ActivityType.playing,
-            name=f"Author: {owner_name} | /help"
+            name=f"Owner: {owner_name} | /help"
         )
     )
 
