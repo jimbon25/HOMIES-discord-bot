@@ -58,9 +58,10 @@ class GamesHelp(commands.Cog):
             embed.add_field(
                 name="Leveling",
                 value=(
-                    f"`{current_prefix}level` - Check your level & EXP\n"
+                    f"`{current_prefix}level` or `{current_prefix}xp` - Check your level & EXP\n"
                     f"Gain EXP by playing games\n"
-                    f"Level up = bonus reward!"
+                    f"Level up = bonus reward!\n"
+                    f"*Shows: Level, EXP progress, games played*"
                 ),
                 inline=False
             )

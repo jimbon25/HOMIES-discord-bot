@@ -46,18 +46,28 @@ class ConfirmationView(discord.ui.View):
             sender_balance = self.cog.get_user_balance(str(self.initiator.id))
             if self.amount > sender_balance:
                 embed.title = "❌ Transaction Failed"
-                embed.description = f"Balance of {self.initiator.mention} is insufficient."
+                embed.description = "Insufficient balance to complete this transaction."
+                embed.clear_fields()
+                embed.add_field(name="Required", value=f"💶 **{self.amount:,}** Mahocoin", inline=True)
+                embed.add_field(name="Available", value=f"💶 **{sender_balance:,}** Mahocoin", inline=True)
+                embed.add_field(name="Shortfall", value=f"💶 **{self.amount - sender_balance:,}** Mahocoin", inline=False)
                 embed.color = discord.Color.red()
+                embed.set_footer(text="Insufficient Funds")
                 await interaction.response.edit_message(embed=embed, view=self)
                 return
             
             self.cog.update_balance(str(self.initiator.id), -self.amount)
             self.cog.update_balance(str(self.target.id), self.amount)
             
-            embed.title = "✅ Payment Successful"
-            embed.description = f"**{self.amount:,}** has been sent to {self.target.mention}."
+            embed.title = "✅ Transaction Completed"
+            embed.description = "Your in-game currency transfer has been processed successfully."
+            embed.clear_fields()
+            embed.add_field(name="Sender", value=f"{self.initiator.mention}", inline=True)
+            embed.add_field(name="Recipient", value=f"{self.target.mention}", inline=True)
+            embed.add_field(name="Amount Transferred", value=f"💶 **{self.amount:,}** Mahocoin", inline=False)
+            embed.add_field(name="Legal Reminder", value="Real Money Trading (RMT) is strictly prohibited and will result in permanent suspension.", inline=False)
             embed.color = discord.Color.green()
-            embed.set_footer(text=f"Status: Success | ID: {interaction.id}")
+            embed.set_footer(text=f"Transaction ID: {interaction.id} | Status: Completed")
             
             await interaction.response.edit_message(embed=embed, view=self)
         
@@ -222,7 +232,7 @@ class CoinFlip(commands.Cog):
                 
                 # Base text that stays static
                 # Using display_name as requested
-                base_text = f"**{message.author.display_name}** Spent **{amount:,}** (Heads)"
+                base_text = f"**{message.author.display_name}** Spent 💶 **{amount:,}** coin flips (Heads)"
                 
                 # Animation Logic
                 msg = await message.channel.send(f"🪙 | {base_text}")
@@ -261,7 +271,7 @@ class CoinFlip(commands.Cog):
                 else:
                     self.update_balance(user_id, -amount)
                     
-                    await msg.edit(content=f"🪙 | {base_text}\n:c | **and YOU LOST all.** You lost **{amount:,}**.{level_msg}")
+                    await msg.edit(content=f"🪙 | {base_text}\n:c | **and YOU LOST all.** You lost :c **{amount:,}**.{level_msg}")
 
             except ValueError:
                 await message.channel.send(f"⚠️ Amount must be a number! Example: `{current_prefix}cf 1000`")
@@ -348,14 +358,18 @@ class CoinFlip(commands.Cog):
                         await message.channel.send(f"❌ Insufficient balance! (Balance: {sender_balance:,})")
                         return
 
-                    # Confirmation logic
+                    # Confirmation logic - Professional Transaction Embed
                     embed = discord.Embed(
-                        title="📜 Payment Confirmation",
-                        description=f"Are you sure you want to send **{amount:,}** to {target_user.mention}?",
-                        color=discord.Color.yellow()
+                        title="💶 Transaction Confirmation",
+                        description="Please review the transaction details before confirming:",
+                        color=discord.Color.gold()
                     )
-                    embed.add_field(name="Recipient", value=target_user.name, inline=True)
-                    embed.add_field(name="Amount", value=f"{amount:,}", inline=True)
+                    embed.add_field(name="Sender", value=f"{message.author.mention} ({message.author.name})", inline=False)
+                    embed.add_field(name="Recipient", value=f"{target_user.mention} ({target_user.name})", inline=False)
+                    embed.add_field(name="Amount", value=f"💶 **{amount:,}** Mahocoin", inline=False)
+                    embed.add_field(name="⚠️ Legal Notice", value="This is an IN-GAME transaction only. Real Money Trading (RMT) is **strictly prohibited** and will result in permanent account suspension.", inline=False)
+                    embed.set_footer(text=f"Timestamp: {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')} | Confirm to proceed")
+                    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3143/3143615.png")
                     
                     view = ConfirmationView(message.author, target_user, amount, 'pay', self)
                     view.message = await message.channel.send(embed=embed, view=view)

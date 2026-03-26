@@ -81,7 +81,8 @@ class GameLeveling(commands.Cog):
         current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
 
-        if content == f"{current_prefix}level":
+        # Command: <prefix>level or <prefix>xp
+        if content == f"{current_prefix}level" or content == f"{current_prefix}xp":
             user_id = str(message.author.id)
             data = self.get_user_data(user_id)
             
@@ -99,6 +100,7 @@ class GameLeveling(commands.Cog):
                 color=discord.Color.blue()
             )
             embed.set_author(name=message.author.name, icon_url=message.author.display_avatar.url)
+            embed.set_footer(text=f"Use {current_prefix}level or {current_prefix}xp to check progress")
             
             await message.channel.send(embed=embed)
 
