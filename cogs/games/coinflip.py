@@ -32,7 +32,7 @@ class ConfirmationView(discord.ui.View):
     @discord.ui.button(label="Confirm", style=discord.ButtonStyle.green, emoji="✅")
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.initiator.id:
-            await interaction.response.send_message("❌ Hanya pengirim yang bisa mengonfirmasi!", ephemeral=True)
+            await interaction.response.send_message("❌ Only the sender can confirm!", ephemeral=True)
             return
 
         for child in self.children:
@@ -45,8 +45,8 @@ class ConfirmationView(discord.ui.View):
         if self.action_type == 'pay':
             sender_balance = self.cog.get_user_balance(str(self.initiator.id))
             if self.amount > sender_balance:
-                embed.title = "❌ Transaksi Gagal"
-                embed.description = f"Saldo {self.initiator.mention} tidak mencukupi."
+                embed.title = "❌ Transaction Failed"
+                embed.description = f"Balance of {self.initiator.mention} is insufficient."
                 embed.color = discord.Color.red()
                 await interaction.response.edit_message(embed=embed, view=self)
                 return
@@ -54,18 +54,18 @@ class ConfirmationView(discord.ui.View):
             self.cog.update_balance(str(self.initiator.id), -self.amount)
             self.cog.update_balance(str(self.target.id), self.amount)
             
-            embed.title = "✅ Pembayaran Berhasil"
-            embed.description = f"**{self.amount:,}** cash telah dikirim ke {self.target.mention}."
+            embed.title = "✅ Payment Successful"
+            embed.description = f"**{self.amount:,}** has been sent to {self.target.mention}."
             embed.color = discord.Color.green()
-            embed.set_footer(text=f"Status: Sukses | ID: {interaction.id}")
+            embed.set_footer(text=f"Status: Success | ID: {interaction.id}")
             
             await interaction.response.edit_message(embed=embed, view=self)
         
         elif self.action_type == 'givecash':
             self.cog.update_balance(str(self.target.id), self.amount)
             
-            embed.title = "✅ Owner Bypass Berhasil"
-            embed.description = f"**{self.amount:,}** cash gratis telah di-generate untuk {self.target.mention}."
+            embed.title = "✅ Owner Bypass Successful"
+            embed.description = f"**{self.amount:,}** free cash has been generated for {self.target.mention}."
             embed.color = discord.Color.green()
             embed.set_footer(text="Status: Owner Authorized")
             
@@ -76,17 +76,17 @@ class ConfirmationView(discord.ui.View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red, emoji="✖️")
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.initiator.id:
-            await interaction.response.send_message("❌ Hanya pengirim yang bisa membatalkan!", ephemeral=True)
+            await interaction.response.send_message("❌ Only the sender can cancel!", ephemeral=True)
             return
 
         for child in self.children:
             child.disabled = True
         
         embed = interaction.message.embeds[0]
-        embed.title = "❌ Transaksi Dibatalkan"
+        embed.title = "❌ Transaction Canceled"
         embed.color = discord.Color.red()
-        embed.description = "Permintaan transaksi telah dibatalkan oleh pengirim."
-        embed.set_footer(text="Status: Dibatalkan")
+        embed.description = "Transaction request has been canceled by the sender."
+        embed.set_footer(text="Status: Canceled")
         
         await interaction.response.edit_message(embed=embed, view=self)
         self.stop()
@@ -175,11 +175,11 @@ class CoinFlip(commands.Cog):
                 new_prefix = parts[2][:1] # Limit to 1 char
                 self.prefixes[guild_id] = new_prefix
                 self.save_prefixes()
-                await message.channel.send(f"✅ Prefix untuk game telah diatur menjadi: `{new_prefix}`")
+                await message.channel.send(f"✅ Game prefix has been set to: `{new_prefix}`")
                 return
             else:
                 current_prefix = self.get_guild_prefix(guild_id)
-                await message.channel.send(f"Prefix saat ini adalah: `{current_prefix}`. Gunakan `mahoraga prefix <char>` untuk mengubahnya.")
+                await message.channel.send(f"Current prefix is: `{current_prefix}`. Use `mahoraga prefix <char>` to change it.")
                 return
 
         # 2. Handle game commands with prefix
@@ -187,12 +187,12 @@ class CoinFlip(commands.Cog):
         
         # Format: <prefix>cf <amount>
         if content.startswith(f"{current_prefix}cf"):
-            # Cooldown check (10 seconds)
+            # Cooldown check (15 seconds)
             current_time = time.time()
             last_cf = self.cf_cooldowns.get(user_id, 0)
-            if current_time - last_cf < 10:
-                remaining = int(10 - (current_time - last_cf))
-                await message.channel.send(f"⏱️ {message.author.mention}, jangan terburu-buru! Tunggu **{remaining} detik** lagi untuk main lagi.", delete_after=5)
+            if current_time - last_cf < 15:
+                remaining = int(15 - (current_time - last_cf))
+                await message.channel.send(f"⏱️ {message.author.mention}, don't rush! Wait **{remaining} seconds** more to play again.", delete_after=5)
                 return
 
             # Extract amount
@@ -200,7 +200,7 @@ class CoinFlip(commands.Cog):
                 # Remove prefix + 'cf' and strip
                 amount_str = content[len(current_prefix) + 2:].strip()
                 if not amount_str:
-                    await message.channel.send(f"⚠️ Gunakan format: `{current_prefix}cf <nominal>`")
+                    await message.channel.send(f"⚠️ Use format: `{current_prefix}cf <amount>`")
                     return
                 
                 if amount_str == "all":
@@ -209,40 +209,62 @@ class CoinFlip(commands.Cog):
                     amount = int(amount_str)
 
                 if amount <= 0:
-                    await message.channel.send("❌ Nominal harus lebih dari 0!")
+                    await message.channel.send("❌ Amount must be greater than 0!")
                     return
 
                 balance = self.get_user_balance(user_id)
                 if amount > balance:
-                    await message.channel.send(f"❌ Cash kamu tidak cukup! (Sisa: {balance:,} cash)")
+                    await message.channel.send(f"❌ Insufficient cash! (Balance: {balance:,})")
                     return
 
                 # After successful amount extraction and balance check:
                 self.cf_cooldowns[user_id] = current_time # Update cooldown
                 
+                # Base text that stays static
+                # Using display_name as requested
+                base_text = f"**{message.author.display_name}** Spent **{amount:,}** (Heads)"
+                
                 # Animation Logic
-                msg = await message.channel.send(f"🪙 | **Melambungkan {amount:,} cash...**")
+                msg = await message.channel.send(f"🪙 | {base_text}")
                 import asyncio
                 
-                await asyncio.sleep(0.7)
-                await msg.edit(content=f"🔄 | **Koin {amount:,} cash memutar di udara...**")
-                await asyncio.sleep(0.7)
+                # Visual Spinning Effect (3-5 cycles)
+                spin_icons = ["🪙", "🟡", "🪙", "🟡"]
+                spin_cycles = random.randint(3, 5)
+                
+                for cycle in range(spin_cycles):
+                    await asyncio.sleep(0.7)
+                    icon = random.choice(spin_icons)
+                    # Only update the icon, keep base_text static
+                    await msg.edit(content=f"{icon} | {base_text}")
+
+                await asyncio.sleep(0.5)
 
                 # Game Logic
                 win = random.random() < 0.5
+                
+                # EXP Gain regardless of win/loss
+                exp_gain = random.randint(10, 30)
+                leveling_cog = self.bot.get_cog("GameLeveling")
+                level_msg = ""
+                if leveling_cog:
+                    leveled, new_lvl, reward = leveling_cog.add_exp(user_id, exp_gain)
+                    if leveled:
+                        level_msg = f"\n⭐ **LEVEL UP!** You are now Level **{new_lvl}** and received a **{reward:,}** bonus!"
+
                 if win:
                     winnings = amount
                     self.update_balance(user_id, winnings)
                     
                     total_win = amount * 2
-                    await msg.edit(content=f"🎉 | **MENANG!** Total kemenangan: **{total_win:,}** cash.")
+                    await msg.edit(content=f"🪙 | {base_text}\n:D | **and YOU WON 💶!** Total winnings: **{total_win:,}**.{level_msg}")
                 else:
                     self.update_balance(user_id, -amount)
                     
-                    await msg.edit(content=f"💸 | **KALAH.** Kamu kehilangan **{amount:,}** cash.")
+                    await msg.edit(content=f"🪙 | {base_text}\n:c | **and YOU LOST all.** You lost **{amount:,}**.{level_msg}")
 
             except ValueError:
-                await message.channel.send(f"⚠️ Nominal harus berupa angka! Contoh: `{current_prefix}cf 1000`")
+                await message.channel.send(f"⚠️ Amount must be a number! Example: `{current_prefix}cf 1000`")
             except Exception as e:
                 logger.error(f"Error in coinflip game: {e}")
 
@@ -250,8 +272,8 @@ class CoinFlip(commands.Cog):
         elif content == f"{current_prefix}cash":
             balance = self.get_user_balance(user_id)
             embed = discord.Embed(
-                title="💰 Wallet",
-                description=f"Cash {message.author.mention}: **{balance:,}**",
+                title="Wallet",
+                description=f"💶 | {message.author.mention}, you currently have **{balance:,}** **Mahocoin!**",
                 color=discord.Color.gold()
             )
             await message.channel.send(embed=embed)
@@ -269,7 +291,7 @@ class CoinFlip(commands.Cog):
                 remaining = cooldown - (current_time - last_daily)
                 hours = remaining // 3600
                 minutes = (remaining % 3600) // 60
-                await message.channel.send(f"⏳ {message.author.mention}, kamu sudah mengambil daily hari ini! Tunggu **{hours} jam {minutes} menit** lagi.")
+                await message.channel.send(f"⏳ {message.author.mention}, you've already claimed your daily today! Wait **{hours} hours {minutes} minutes** more.")
                 return
 
             reward = 10000
@@ -278,7 +300,7 @@ class CoinFlip(commands.Cog):
             self.economy[user_id] = user_data
             self.save_economy()
             
-            await message.channel.send(f"🎁 {message.author.mention}, kamu mendapatkan daily reward sebesar **{reward:,}** cash!")
+            await message.channel.send(f"🎁 {message.author.mention}, you received a daily reward of **{reward:,}**!")
 
         # 3b. Handle work command
         elif content == f"{current_prefix}work":
@@ -287,15 +309,15 @@ class CoinFlip(commands.Cog):
             last_work = self.work_cooldowns.get(user_id, 0)
             if current_time - last_work < 30:
                 remaining = int(30 - (current_time - last_work))
-                await message.channel.send(f"👷 {message.author.mention}, kamu capek! Istirahat dulu selama **{remaining} detik**.", delete_after=5)
+                await message.channel.send(f"👷 {message.author.mention}, you're tired! Rest for **{remaining} seconds**.", delete_after=5)
                 return
 
             self.work_cooldowns[user_id] = current_time
             reward = random.randint(100, 1000)
-            jobs = ["Bantu Mak Lampir", "Jualan Es Cendol", "Jadi Kuli Jawa", "Ngelas Kapal", "Nariking Becak"]
+            jobs = ["Helper", "Vendor", "Worker", "Welder", "Driver"]
             job = random.choice(jobs)
             self.update_balance(user_id, reward)
-            await message.channel.send(f"👷 {message.author.mention}, kamu bekerja sebagai **{job}** dan dibayar **{reward:,}** cash!")
+            await message.channel.send(f"👷 {message.author.mention}, you worked as a **{job}** and were paid 💶 **{reward:,}** mahocoin!")
 
         # 3c. Handle pay command (Transfer/Transaction for everyone)
         elif content.startswith(f"{current_prefix}pay"):
@@ -304,10 +326,10 @@ class CoinFlip(commands.Cog):
                 try:
                     target_user = message.mentions[0]
                     if target_user.bot:
-                        await message.channel.send("❌ Kamu tidak bisa mengirim uang ke bot!")
+                        await message.channel.send("❌ You cannot send money to bots!")
                         return
                     if target_user.id == message.author.id:
-                        await message.channel.send("❌ Kamu tidak bisa mengirim uang ke diri sendiri!")
+                        await message.channel.send("❌ You cannot send money to yourself!")
                         return
 
                     # Find the amount in parts
@@ -318,29 +340,29 @@ class CoinFlip(commands.Cog):
                             break
                     
                     if amount is None or amount <= 0:
-                        await message.channel.send("❌ Nominal harus berupa angka positif!")
+                        await message.channel.send("❌ Amount must be a positive number!")
                         return
 
                     sender_balance = self.get_user_balance(user_id)
                     if amount > sender_balance:
-                        await message.channel.send(f"❌ Saldo kamu tidak cukup! (Sisa: {sender_balance:,} cash)")
+                        await message.channel.send(f"❌ Insufficient balance! (Balance: {sender_balance:,})")
                         return
 
                     # Confirmation logic
                     embed = discord.Embed(
-                        title="📜 Konfirmasi Pembayaran",
-                        description=f"Apakah kamu yakin ingin mengirim **{amount:,}** cash kepada {target_user.mention}?",
+                        title="📜 Payment Confirmation",
+                        description=f"Are you sure you want to send **{amount:,}** to {target_user.mention}?",
                         color=discord.Color.yellow()
                     )
-                    embed.add_field(name="Penerima", value=target_user.name, inline=True)
-                    embed.add_field(name="Jumlah", value=f"{amount:,} cash", inline=True)
+                    embed.add_field(name="Recipient", value=target_user.name, inline=True)
+                    embed.add_field(name="Amount", value=f"{amount:,}", inline=True)
                     
                     view = ConfirmationView(message.author, target_user, amount, 'pay', self)
                     view.message = await message.channel.send(embed=embed, view=view)
                     
                 except Exception as e:
                     logger.error(f"Error in pay command: {e}")
-                    await message.channel.send("⚠️ Format salah! Gunakan: `<prefix>pay @user <nominal>`")
+                    await message.channel.send("⚠️ Invalid format! Use: `<prefix>pay @user <amount>`")
 
         # 4. Handle give cash command (Owner only - Spawn money from air)
         elif content.startswith(f"{current_prefix}givecash"):
@@ -365,7 +387,7 @@ class CoinFlip(commands.Cog):
                     # Confirmation logic for owner
                     embed = discord.Embed(
                         title="💎 Owner Bypass Confirmation",
-                        description=f"Generate **{amount:,}** cash gratis untuk {target_user.mention}?",
+                        description=f"Generate **{amount:,}** free cash for {target_user.mention}?",
                         color=discord.Color.purple()
                     )
                     view = ConfirmationView(message.author, target_user, amount, 'givecash', self)

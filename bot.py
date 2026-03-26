@@ -334,7 +334,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     """Global error handler for all slash commands"""
     
     # Skip if already responded
-    if interaction.response.is_done():
+    if interaction.response.is_done:
         return
     
     error_msg = "❌ An error occurred while processing your command."
