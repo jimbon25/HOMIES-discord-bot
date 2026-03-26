@@ -11,13 +11,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class LeaderboardView(discord.ui.View):
-    """Pagination view for leaderboard"""
+    """Pagination view for leaderboard - displays top 50 only"""
     
-    def __init__(self, all_players, current_page=0):
+    def __init__(self, all_players, current_page=0, total_active=0):
         super().__init__(timeout=120)
-        self.all_players = sorted(all_players, key=lambda x: x['balance'], reverse=True)
+        self.all_players = sorted(all_players, key=lambda x: x['balance'], reverse=True)[:50]  # ONLY TOP 50
         self.current_page = current_page
         self.per_page = 10
+        self.total_active = total_active  # For display purposes
         self.max_pages = (len(self.all_players) + self.per_page - 1) // self.per_page
         self.update_buttons()
     
@@ -58,7 +59,7 @@ class LeaderboardView(discord.ui.View):
             inline=False
         )
         
-        embed.set_footer(text=f"Page {self.current_page + 1}/{self.max_pages} • Total Players: {len(self.all_players)}")
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.max_pages}")
         return embed
 
     @discord.ui.button(label="◀", style=discord.ButtonStyle.grey, emoji="⬅️")
@@ -106,38 +107,34 @@ class GlobalLeaderboard(commands.Cog):
         try:
             with open(self.leaderboard_file, 'r') as f:
                 players = json.load(f)
-                if players and len(players) >= 1689:
+                if players and len(players) >= 50:
                     return players
         except:
             pass
         
-        # Generate new dummy players
+        # Generate new dummy players - ONLY 50 to keep JSON small
         players = []
         used_names = set()
         
-        for i in range(1689):
-            # Generate unique username
+        for i in range(50):
+            # Generate unique username (lowercase)
             while True:
                 first = random.choice(self.dummy_usernames)
                 second = random.choice(self.dummy_usernames)
-                username = f"{first}{second}#{random.randint(1000, 9999)}"
+                username = f"{first}{second}#{random.randint(1000, 9999)}".lower()
                 if username not in used_names:
                     used_names.add(username)
                     break
             
             # Generate balance (higher for top players)
-            if i < 10:
-                balance = random.randint(50000000, 100000000)  # 50M - 100M for top 10
-            elif i < 50:
-                balance = random.randint(20000000, 50000000)   # 20M - 50M for top 50
-            elif i < 100:
-                balance = random.randint(10000000, 20000000)   # 10M - 20M for top 100
-            elif i < 300:
-                balance = random.randint(1000000, 10000000)    # 1M - 10M for top 300
-            elif i < 700:
-                balance = random.randint(100000, 1000000)      # 100K - 1M for top 700
+            if i < 5:
+                balance = random.randint(50000000, 100000000)  # 50M - 100M for top 5
+            elif i < 15:
+                balance = random.randint(20000000, 50000000)   # 20M - 50M for top 15
+            elif i < 30:
+                balance = random.randint(1000000, 10000000)    # 1M - 10M for top 30
             else:
-                balance = random.randint(10000, 100000)        # 10K - 100K for rest
+                balance = random.randint(100000, 1000000)      # 100K - 1M for rest
             
             players.append({
                 "rank": i + 1,
@@ -182,11 +179,12 @@ class GlobalLeaderboard(commands.Cog):
                     except:
                         pass
             
-            # Combine real + dummy players
+            # Combine real + dummy players (but only display top 50)
             all_players = real_players + self.dummy_players
+            total_all = len(all_players)  # Count total for reference
             
-            # Create view and send
-            view = LeaderboardView(all_players, current_page=0)
+            # Create view AND it will slice to top 50
+            view = LeaderboardView(all_players, current_page=0, total_active=total_all)
             embed = view.get_page_embed()
             
             await message.channel.send(embed=embed, view=view)

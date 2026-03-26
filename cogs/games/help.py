@@ -37,6 +37,7 @@ class GamesHelp(commands.Cog):
                     f"`{current_prefix}cf <amount>` - Coin flip (50/50 chance, x2 if win)\n"
                     f"`{current_prefix}s <amount>` - Slots (triple match for x3-7 payout)\n"
                     f"`{current_prefix}bj <amount>` - Blackjack (hit/stand vs dealer)\n"
+                    f"`{current_prefix}spin <amount>` - Spin the wheel (0.0x-10x multiplier, HIGH RISK)\n"
                     f"\nUse `all` instead of amount to bet all your cash"
                 ),
                 inline=False
@@ -81,8 +82,9 @@ class GamesHelp(commands.Cog):
                 value=(
                     "Coin Flip: 10-30 EXP per play\n"
                     "Slots: 30-60 EXP per play\n"
-                    "Blackjack: EXP on win/lose\n"
-                    "Each game triggers cooldown"
+                    "Blackjack: 15-40 EXP per play\n"
+                    "Spin Wheel: 10-25 EXP per play (59% loss, 6% break even, 35% win)\n"
+                    "Each game has cooldown"
                 ),
                 inline=False
             )
