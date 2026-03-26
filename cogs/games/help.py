@@ -38,6 +38,7 @@ class GamesHelp(commands.Cog):
                     f"`{current_prefix}s <amount>` - Slots (triple match for x3-7 payout)\n"
                     f"`{current_prefix}bj <amount>` - Blackjack (hit/stand vs dealer)\n"
                     f"`{current_prefix}spin <amount>` - Spin the wheel (0.0x-10x multiplier, HIGH RISK)\n"
+                    f"`{current_prefix}dice <2-12> <amount>` - Dice roll (guess sum of 2 dice)\n"
                     f"\nUse `all` instead of amount to bet all your cash"
                 ),
                 inline=False
@@ -84,6 +85,7 @@ class GamesHelp(commands.Cog):
                     "Slots: 30-60 EXP per play\n"
                     "Blackjack: 15-40 EXP per play\n"
                     "Spin Wheel: 10-25 EXP per play (59% loss, 6% break even, 35% win)\n"
+                    "Dice Roll: 8-20 EXP per play (2x-20x payout based on guess)\n"
                     "Each game has cooldown"
                 ),
                 inline=False
