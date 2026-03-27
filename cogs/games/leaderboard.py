@@ -207,20 +207,20 @@ class GlobalLeaderboard(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog:
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog:
             return
 
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
 
         # Command: <prefix>leaderboard or <prefix>lb
         if content == f"{current_prefix}leaderboard" or content == f"{current_prefix}lb":
             # Mix real players with dummy
             real_players = []
-            coinflip_cog = self.bot.get_cog("CoinFlip")
-            if coinflip_cog:
-                for user_id, user_data in coinflip_cog.economy.items():
+            economy_cog = self.bot.get_cog("Economy")
+            if economy_cog:
+                for user_id, user_data in economy_cog.economy.items():
                     try:
                         user = await self.bot.fetch_user(int(user_id))
                         username = f"{user.name}#{user.discriminator}"

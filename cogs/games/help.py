@@ -15,11 +15,11 @@ class GamesHelp(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog:
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog:
             return
 
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
 
         # Command: <prefix>help

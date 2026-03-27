@@ -34,11 +34,11 @@ class DiceRollGame(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog:
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog:
             return
 
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
         user_id = str(message.author.id)
 
@@ -67,7 +67,7 @@ class DiceRollGame(commands.Cog):
                 return
 
             # Get balance
-            balance = coinflip_cog.get_user_balance(user_id)
+            balance = economy_cog.get_user_balance(user_id)
 
             # Parse amount
             if amount_str.lower() == "all":
@@ -99,7 +99,7 @@ class DiceRollGame(commands.Cog):
             self.cooldowns[user_id] = current_time
 
             # Deduct bet
-            coinflip_cog.update_balance(user_id, -amount)
+            economy_cog.update_balance(user_id, -amount)
 
             # Roll 2 dice
             die1 = random.randint(1, 6)
@@ -153,7 +153,7 @@ class DiceRollGame(commands.Cog):
 
             # Update balance
             if win:
-                coinflip_cog.update_balance(user_id, winnings)
+                economy_cog.update_balance(user_id, winnings)
 
             # Create result embed
             embed_color = discord.Color.green() if win else discord.Color.red()

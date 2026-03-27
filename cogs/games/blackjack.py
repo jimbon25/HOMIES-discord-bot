@@ -81,7 +81,7 @@ class BlackjackGameView(discord.ui.View):
         
         return value
 
-    async def dealer_turn(self, coinflip_cog, user_id):
+    async def dealer_turn(self, economy_cog, user_id):
         """Execute dealer's turn"""
         while self.calculate_value(self.game_data["dealer_hand"]) < 17:
             self.game_data["dealer_hand"].append(self.draw_card())
@@ -174,25 +174,25 @@ class BlackjackGameView(discord.ui.View):
             if leveled:
                 level_msg = f"\n⭐ **LEVEL UP!** You're now Level **{new_lvl}** and got **{reward:,}** bonus!"
         
-        coinflip_cog = self.bot.get_cog("CoinFlip")
+        economy_cog = self.bot.get_cog("Economy")
         
         if dealer_value > 21:
             result = "win"
             embed.title = "🏆 YOU WIN! Dealer Busted!"
             embed.color = discord.Color.green()
             # Payout: 2x the bet
-            if coinflip_cog:
+            if economy_cog:
                 winnings = self.game_data["bet"] * 2
-                coinflip_cog.update_balance(user_id, winnings)
+                economy_cog.update_balance(user_id, winnings)
             embed.add_field(name="Payout", value=f"+**{self.game_data['bet'] * 2:,}** Mahocoin", inline=False)
         elif player_value > dealer_value:
             result = "win"
             embed.title = "🏆 YOU WIN!"
             embed.color = discord.Color.green()
             # Payout: 2x the bet
-            if coinflip_cog:
+            if economy_cog:
                 winnings = self.game_data["bet"] * 2
-                coinflip_cog.update_balance(user_id, winnings)
+                economy_cog.update_balance(user_id, winnings)
             embed.add_field(name="Payout", value=f"+**{self.game_data['bet'] * 2:,}** Mahocoin", inline=False)
         elif player_value < dealer_value:
             result = "lose"
@@ -204,8 +204,8 @@ class BlackjackGameView(discord.ui.View):
             embed.title = "🤝 PUSH (Draw)"
             embed.color = discord.Color.light_grey()
             # Return the bet on push
-            if coinflip_cog:
-                coinflip_cog.update_balance(user_id, self.game_data["bet"])
+            if economy_cog:
+                economy_cog.update_balance(user_id, self.game_data["bet"])
             embed.add_field(name="Returned", value=f"**{self.game_data['bet']:,}** Mahocoin (Draw)", inline=False)
         
         embed.add_field(name="Experience", value=f"+**{exp_gain}** EXP{level_msg}", inline=False)
@@ -223,11 +223,11 @@ class Blackjack(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog:
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog:
             return
 
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
         user_id = str(message.author.id)
 
@@ -248,7 +248,7 @@ class Blackjack(commands.Cog):
                     return
 
                 if amount_str == "all":
-                    amount = coinflip_cog.get_user_balance(user_id)
+                    amount = economy_cog.get_user_balance(user_id)
                 else:
                     amount = int(amount_str)
 
@@ -257,7 +257,7 @@ class Blackjack(commands.Cog):
                     await message.channel.send("❌ Bet must be > 0!")
                     return
 
-                balance = coinflip_cog.get_user_balance(user_id)
+                balance = economy_cog.get_user_balance(user_id)
                 if amount > balance:
                     await message.channel.send(f"❌ Insufficient balance! (Have: {balance:,})")
                     return
@@ -266,7 +266,7 @@ class Blackjack(commands.Cog):
                 self.cooldowns[user_id] = current_time
                 
                 # Deduct bet
-                coinflip_cog.update_balance(user_id, -amount)
+                economy_cog.update_balance(user_id, -amount)
                 
                 # Create initial hands
                 deck_suits = ['♠️', '♥️', '♦️', '♣️']

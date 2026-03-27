@@ -62,11 +62,11 @@ class SpinWheelGame(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog:
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog:
             return
 
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
         user_id = str(message.author.id)
 
@@ -87,7 +87,7 @@ class SpinWheelGame(commands.Cog):
                     return
 
                 if amount_str == "all":
-                    amount = coinflip_cog.get_user_balance(user_id)
+                    amount = economy_cog.get_user_balance(user_id)
                 else:
                     amount = int(amount_str)
 
@@ -96,7 +96,7 @@ class SpinWheelGame(commands.Cog):
                     await message.channel.send("❌ Bet must be > 0!")
                     return
 
-                balance = coinflip_cog.get_user_balance(user_id)
+                balance = economy_cog.get_user_balance(user_id)
                 if amount > balance:
                     await message.channel.send(f"❌ Insufficient balance! (Have: {balance:,})")
                     return
@@ -105,7 +105,7 @@ class SpinWheelGame(commands.Cog):
                 self.cooldowns[user_id] = current_time
                 
                 # Deduct bet
-                coinflip_cog.update_balance(user_id, -amount)
+                economy_cog.update_balance(user_id, -amount)
                 
                 # Choose random multiplier
                 multiplier = random.choice(self.wheel_segments)
@@ -160,7 +160,7 @@ class SpinWheelGame(commands.Cog):
                     emoji_result = "💔"
                 
                 # Update balance with winnings
-                coinflip_cog.update_balance(user_id, winnings)
+                economy_cog.update_balance(user_id, winnings)
                 
                 # Final embed
                 if multiplier == 10.0:

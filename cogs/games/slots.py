@@ -20,10 +20,10 @@ class Slots(commands.Cog):
         if message.author.bot or not message.guild:
             return
 
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog: return
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog: return
 
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
         user_id = str(message.author.id)
 
@@ -39,7 +39,7 @@ class Slots(commands.Cog):
             try:
                 amount_str = content[len(current_prefix) + 2:].strip()
                 if amount_str == "all":
-                    amount = coinflip_cog.get_user_balance(user_id)
+                    amount = economy_cog.get_user_balance(user_id)
                 else:
                     amount = int(amount_str)
 
@@ -47,7 +47,7 @@ class Slots(commands.Cog):
                     await message.channel.send("❌ Amount must be greater than 0!")
                     return
 
-                balance = coinflip_cog.get_user_balance(user_id)
+                balance = economy_cog.get_user_balance(user_id)
                 if amount > balance:
                     await message.channel.send(f"❌ Insufficient cash! (Balance: {balance:,})")
                     return
@@ -55,7 +55,7 @@ class Slots(commands.Cog):
                 self.cooldowns[user_id] = current_time
                 
                 # Deduct money
-                coinflip_cog.update_balance(user_id, -amount)
+                economy_cog.update_balance(user_id, -amount)
 
                 # 1. Determine final roll at the start for consistency
                 final_roll = [random.choice(self.symbols) for _ in range(3)]
@@ -112,7 +112,7 @@ class Slots(commands.Cog):
 
                 if multiplier > 0:
                     win_amount = int(amount * multiplier)
-                    coinflip_cog.update_balance(user_id, win_amount)
+                    economy_cog.update_balance(user_id, win_amount)
                     await msg.edit(content=f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ {display} ]\n\n:D | **and YOU WON 💶!** You won **{win_amount:,}**! (x{multiplier}){level_msg}")
                 else:
                     await msg.edit(content=f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ {display} ]\n\n:c | **and YOU LOST all!** Try again later.{level_msg}")

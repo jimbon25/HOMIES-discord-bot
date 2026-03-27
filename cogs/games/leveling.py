@@ -60,9 +60,9 @@ class GameLeveling(commands.Cog):
             reward = new_level * 5000
             
             # Add reward to economy
-            coinflip_cog = self.bot.get_cog("CoinFlip")
-            if coinflip_cog:
-                coinflip_cog.update_balance(user_id, reward)
+            economy_cog = self.bot.get_cog("Economy")
+            if economy_cog:
+                economy_cog.update_balance(user_id, reward)
         
         self.levels[user_id] = data
         self.save_data()
@@ -75,10 +75,10 @@ class GameLeveling(commands.Cog):
             return
 
         # Get prefix from CoinFlip cog (or shared source)
-        coinflip_cog = self.bot.get_cog("CoinFlip")
-        if not coinflip_cog: return
+        economy_cog = self.bot.get_cog("Economy")
+        if not economy_cog: return
         
-        current_prefix = coinflip_cog.get_guild_prefix(str(message.guild.id))
+        current_prefix = economy_cog.get_guild_prefix(str(message.guild.id))
         content = message.content.lower().strip()
 
         # Command: <prefix>level or <prefix>xp
