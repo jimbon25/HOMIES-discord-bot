@@ -39,6 +39,9 @@ class GamesHelp(commands.Cog):
                     f"`{current_prefix}bj <amount>` - Blackjack (hit/stand vs dealer)\n"
                     f"`{current_prefix}spin <amount>` - Spin the wheel (0.0x-10x multiplier, HIGH RISK)\n"
                     f"`{current_prefix}dice <2-12> <amount>` - Dice roll (guess sum of 2 dice)\n"
+                    f"`{current_prefix}work` - Work for 100-1000 cash (chance for rare mystery box)\n"
+                    f"`{current_prefix}box` - See your mystery box stock\n"
+                    f"`{current_prefix}box open` - Open a mystery box (if you have one)\n"
                     f"\nUse `all` instead of amount to bet all your cash"
                 ),
                 inline=False
@@ -86,6 +89,7 @@ class GamesHelp(commands.Cog):
                     "Blackjack: 15-40 EXP per play\n"
                     "Spin Wheel: 10-25 EXP per play (59% loss, 6% break even, 35% win)\n"
                     "Dice Roll: 8-20 EXP per play (2x-20x payout based on guess)\n"
+                    "Mystery Box: 12-28 EXP per open (rarity depends on box tier, 6 tiers available)\n"
                     "Each game has cooldown"
                 ),
                 inline=False

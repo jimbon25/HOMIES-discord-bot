@@ -171,6 +171,9 @@ class HelpCommand(commands.Cog):
             inline=False
         )
         
+        # (Mystery Box removed)
+        # You can add other game sections here.
+        
         embed.add_field(
             name="Tips",
             value="• Use `/announce format:plain text_size:large` for big announcements\n"

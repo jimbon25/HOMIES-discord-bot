@@ -1,6 +1,6 @@
 """Global Leaderboard System - Dummy data with fake users to encourage gameplay"""
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import random
 import json
 import os
@@ -59,7 +59,7 @@ class LeaderboardView(discord.ui.View):
             inline=False
         )
         
-        embed.set_footer(text=f"Page {self.current_page + 1}/{self.max_pages}")
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.max_pages} | Balances update every 3 hours")
         return embed
 
     @discord.ui.button(label="◀", style=discord.ButtonStyle.grey, emoji="⬅️")
@@ -96,6 +96,7 @@ class GlobalLeaderboard(commands.Cog):
         ]
         self.ensure_files()
         self.dummy_players = self.load_or_generate_dummy()
+        self.update_dummy_balances.start()
 
     def ensure_files(self):
         Path("data").mkdir(parents=True, exist_ok=True)
@@ -148,6 +149,58 @@ class GlobalLeaderboard(commands.Cog):
         # Save to file
         safe_save_json(players, self.leaderboard_file)
         return players
+
+    def update_dummy_balance(self, player: dict) -> dict:
+        """Update a dummy player's balance with random fluctuation
+        
+        30% chance increase (5-25% gain)
+        30% chance decrease (5-25% loss)
+        40% chance no change
+        """
+        change_type = random.choices(["increase", "decrease", "stay"], weights=[30, 30, 40])[0]
+        
+        if change_type == "increase":
+            percent_change = random.randint(5, 25)  # 5-25% gain
+            amount = int(player["balance"] * percent_change / 100)
+            player["balance"] += amount
+        elif change_type == "decrease":
+            percent_change = random.randint(5, 25)  # 5-25% loss
+            amount = int(player["balance"] * percent_change / 100)
+            player["balance"] -= amount
+            # Ensure balance doesn't go below minimum
+            if player["balance"] < 50000:
+                player["balance"] = 50000
+        # else: stay - no change
+        
+        return player
+
+    @tasks.loop(hours=3)
+    async def update_dummy_balances(self):
+        """Update dummy player balances every 3 hours"""
+        try:
+            # Load current dummy players
+            with open(self.leaderboard_file, 'r') as f:
+                players = json.load(f)
+            
+            # Update each player's balance
+            for player in players:
+                self.update_dummy_balance(player)
+            
+            # Re-sort by balance
+            players = sorted(players, key=lambda x: x['balance'], reverse=True)
+            
+            # Save updated data
+            safe_save_json(players, self.leaderboard_file)
+            self.dummy_players = players
+            
+            logger.info(f"✅ Updated {len(players)} dummy player balances")
+        except Exception as e:
+            logger.error(f"❌ Error updating dummy balances: {e}")
+
+    @update_dummy_balances.before_loop
+    async def before_update_balances(self):
+        """Wait for bot to be ready before starting the loop"""
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

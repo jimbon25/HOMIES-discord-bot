@@ -314,22 +314,68 @@ class CoinFlip(commands.Cog):
 
         # 3b. Handle work command
         elif content == f"{current_prefix}work":
-            # Cooldown check (30 seconds)
+            # Cooldown check (5 seconds)
             current_time = time.time()
             last_work = self.work_cooldowns.get(user_id, 0)
-            if current_time - last_work < 30:
-                remaining = int(30 - (current_time - last_work))
-                await message.channel.send(f"👷 {message.author.mention}, you're tired! Rest for **{remaining} seconds**.", delete_after=5)
+            if current_time - last_work < 5:
+                remaining = int(5 - (current_time - last_work))
+                await message.channel.send(f"👷 **{message.author.display_name}**, you're tired! Rest for **{remaining} seconds**.", delete_after=5)
                 return
 
             self.work_cooldowns[user_id] = current_time
             reward = random.randint(100, 1000)
-            jobs = ["Helper", "Vendor", "Worker", "Welder", "Driver"]
+            jobs = ["Helper", "Vendor", "Worker", "Welder", "Driver", "Penjual Seblak", "Penjaga Toko", "Petani", "Pekerja Pabrik", "Kurir", "Barista", "Kasir", "Tukang Kebun", "Pembersih", "Pekerja Konstruksi", "Penjaga Keamanan", "Pekerja Restoran", "Pekerja Gudang", "Pekerja Bangunan", "Pekerja Pembersih", "Pekerja Toko", "Pekerja Kafe", "Pekerja Supermarket", "Pekerja Mall", "Pekerja Pasar", "Pekerja Pabrik", "Pekerja Pertanian", "Pekerja Perikanan", "Pekerja Peternakan", "Pekerja Transportasi", "Pekerja Logistik"]
             job = random.choice(jobs)
             self.update_balance(user_id, reward)
-            await message.channel.send(f"👷 {message.author.mention}, you worked as a **{job}** and were paid 💶 **{reward:,}** mahocoin!")
 
-        # 3c. Handle pay command (Transfer/Transaction for everyone)
+            # Rare Mystery Box drop from work (5% chance)
+            user_data = self.get_user_data(user_id)
+            drop_box = random.random() < 0.05
+            if drop_box:
+                user_data["box_boxes"] = user_data.get("box_boxes", 0) + 1
+                self.economy[user_id] = user_data
+                self.save_economy()
+                await message.channel.send(f"👷 **{message.author.display_name}**, you worked as a **{job}** and were paid 💶 **{reward:,}** mahocoin!\n🎁 Lucky drop! You found a mystery box. Use `{current_prefix}box open` to open it.")
+            else:
+                await message.channel.send(f"👷 **{message.author.display_name}**, you worked as a **{job}** and were paid 💶 **{reward:,}** mahocoin!")
+
+        # 3c. Handle box open command
+        elif content == f"{current_prefix}box open":
+            user_data = self.get_user_data(user_id)
+            boxes = user_data.get("box_boxes", 0)
+            if boxes <= 0:
+                await message.channel.send(f"📦 {message.author.mention}, you have no mystery boxes. Try `{current_prefix}work` for a rare drop!")
+                return
+
+            # Consume one box
+            user_data["box_boxes"] = boxes - 1
+            self.economy[user_id] = user_data
+            self.save_economy()
+
+            # Determine reward rarity
+            roll = random.randint(1, 100)
+            if roll <= 80:
+                rarity = "Common"
+                prize = random.randint(100, 300)
+            elif roll <= 95:
+                rarity = "Uncommon"
+                prize = random.randint(400, 700)
+            elif roll <= 99:
+                rarity = "Rare"
+                prize = random.randint(800, 1200)
+            else:
+                rarity = "Legendary"
+                prize = random.randint(1500, 3000)
+
+            self.update_balance(user_id, prize)
+            await message.channel.send(f"📦 {message.author.mention}, you opened a mystery box! Rarity: **{rarity}** and got 💶 **{prize:,}** mahocoin!")
+
+        elif content == f"{current_prefix}box":
+            user_data = self.get_user_data(user_id)
+            boxes = user_data.get("box_boxes", 0)
+            await message.channel.send(f"📦 {message.author.mention}, you have **{boxes}** mystery box(es). Use `{current_prefix}box open` to open.")
+
+        # 3d. Handle pay command (Transfer/Transaction for everyone)
         elif content.startswith(f"{current_prefix}pay"):
             parts = content.split()
             if len(parts) >= 3 and message.mentions:
