@@ -33,7 +33,7 @@ class Slots(commands.Cog):
             current_time = time.time()
             if user_id in self.cooldowns and current_time - self.cooldowns[user_id] < 25:
                 remaining = int(25 - (current_time - self.cooldowns[user_id]))
-                await message.channel.send(f"⏱️ {message.author.mention}, slot machine is hot! Wait **{remaining}s**.", delete_after=5)
+                await message.channel.send(f"⏱️ **{message.author.display_name}**, slot machine is hot! Wait **{remaining}s**.", delete_after=5)
                 return
 
             try:
@@ -61,7 +61,7 @@ class Slots(commands.Cog):
                 final_roll = [random.choice(self.symbols) for _ in range(3)]
 
                 # 2. Animation (Realistic Rolling)
-                msg = await message.channel.send(f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ ❓ | ❓ | ❓ ]")
+                msg = await message.channel.send(f"🎰 | **{message.author.display_name}** Spent **{amount:,}**... (slots)\n[ ❓ | ❓ | ❓ ]")
 
                 import asyncio
                 for i in range(3):
@@ -77,7 +77,7 @@ class Slots(commands.Cog):
                                 current_view.append(random.choice(self.symbols))
 
                         display = " | ".join(current_view)
-                        await msg.edit(content=f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ {display} ]")
+                        await msg.edit(content=f"🎰 | **{message.author.display_name}** Spent **{amount:,}**... (slots)\n[ {display} ]")
 
                     # Lock symbol for reel i
                     await asyncio.sleep(0.5)
@@ -89,7 +89,7 @@ class Slots(commands.Cog):
                             current_view.append(random.choice(self.symbols))
 
                     display = " | ".join(current_view)
-                    await msg.edit(content=f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ {display} ]")
+                    await msg.edit(content=f"🎰 | **{message.author.display_name}** Spent **{amount:,}**... (slots)\n[ {display} ]")
 
                 # 3. Payout Logic
                 display = " | ".join(final_roll)
@@ -113,9 +113,9 @@ class Slots(commands.Cog):
                 if multiplier > 0:
                     win_amount = int(amount * multiplier)
                     economy_cog.update_balance(user_id, win_amount)
-                    await msg.edit(content=f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ {display} ]\n\n:D | **and YOU WON 💶!** You won **{win_amount:,}**! (x{multiplier}){level_msg}")
+                    await msg.edit(content=f"🎰 | **{message.author.display_name}** Spent **{amount:,}**... (slots)\n[ {display} ]\n\n:D | **and YOU WON 💶!** You won **{win_amount:,}**! (x{multiplier}){level_msg}")
                 else:
-                    await msg.edit(content=f"🎰 | **{message.author.name}** Spent **{amount:,}**... (slots)\n[ {display} ]\n\n:c | **and YOU LOST all!** Try again later.{level_msg}")
+                    await msg.edit(content=f"🎰 | **{message.author.display_name}** Spent **{amount:,}**... (slots)\n[ {display} ]\n\n:c | **and YOU LOST all!** Try again later.{level_msg}")
 
             except ValueError:
                 await message.channel.send(f"⚠️ Use format: `{current_prefix}s <amount>`")

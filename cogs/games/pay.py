@@ -1,14 +1,26 @@
-"""Transaction Commands - Pay and GiveCash"""
+"""Transaction Commands - Pay and GiveCash with Progressive Tax"""
 import discord
 from discord.ext import commands
 import os
 import logging
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
+def get_tax_rate(amount):
+    """Calculate tax rate based on progressive brackets"""
+    if amount < 100000:
+        return 0.02
+    elif amount < 1000000:
+        return 0.05
+    elif amount < 10000000:
+        return 0.08
+    else:
+        return 0.12
+
 class ConfirmationView(discord.ui.View):
     def __init__(self, initiator, target, amount, action_type, economy_cog):
-        super().__init__(timeout=30)
+        super().__init__(timeout=60)
         self.initiator = initiator
         self.target = target
         self.amount = amount
@@ -51,18 +63,24 @@ class ConfirmationView(discord.ui.View):
                 await interaction.response.edit_message(embed=embed, view=self)
                 return
             
+            # Calculate Dynamic Tax
+            tax_rate = get_tax_rate(self.amount)
+            tax_amount = int(self.amount * tax_rate)
+            received_amount = self.amount - tax_amount
+            
+            # Update Balances
             self.economy_cog.update_balance(str(self.initiator.id), -self.amount)
-            self.economy_cog.update_balance(str(self.target.id), self.amount)
+            self.economy_cog.update_balance(str(self.target.id), received_amount)
             
             embed.title = "✅ Transaction Completed"
-            embed.description = "Your in-game currency transfer has been processed successfully."
+            embed.description = (
+                f"Successfully transferred to {self.target.mention}\n"
+                f"```💶 {received_amount:,} Mahocoin (Net) | Tax ({int(tax_rate*100)}%)```"
+            )
             embed.clear_fields()
-            embed.add_field(name="Sender", value=f"{self.initiator.mention}", inline=True)
-            embed.add_field(name="Recipient", value=f"{self.target.mention}", inline=True)
-            embed.add_field(name="Amount Transferred", value=f"💶 **{self.amount:,}** Mahocoin", inline=False)
-            embed.add_field(name="Legal Reminder", value="Real Money Trading (RMT) is strictly prohibited and will result in permanent suspension.", inline=False)
             embed.color = discord.Color.green()
-            embed.set_footer(text=f"Transaction ID: {interaction.id} | Status: Completed")
+            wib_time = (discord.utils.utcnow() + timedelta(hours=7)).strftime('%Y-%m-%d %H:%M:%S')
+            embed.set_footer(text=f"{wib_time} | Status: Completed")
             
             await interaction.response.edit_message(embed=embed, view=self)
         
@@ -142,18 +160,23 @@ class Transactions(commands.Cog):
                         await message.channel.send(f"❌ Insufficient balance! (Balance: {sender_balance:,})")
                         return
 
-                    # Confirmation logic - Professional Transaction Embed
+                    # Dynamic Tax preview
+                    tax_rate = get_tax_rate(amount)
+                    tax_amount = int(amount * tax_rate)
+                    net_amount = amount - tax_amount
+
+                    # Simplified Confirmation Embed
                     embed = discord.Embed(
-                        title="💶 Transaction Confirmation",
-                        description="Please review the transaction details before confirming:",
+                        title="Transaction Confirmation",
+                        description=(
+                            f"{message.author.mention} will give {target_user.mention}\n\n"
+                            f"```💶 {amount:,} Mahocoin | Tax ({int(tax_rate*100)}%)```\n"
+                            f"⚠️ *Legal Notice: This is an IN-GAME transaction only. Real Money Trading (RMT) is strictly prohibited and will result in permanent account suspension.*"
+                        ),
                         color=discord.Color.gold()
                     )
-                    embed.add_field(name="Sender", value=f"{message.author.mention} ({message.author.name})", inline=False)
-                    embed.add_field(name="Recipient", value=f"{target_user.mention} ({target_user.name})", inline=False)
-                    embed.add_field(name="Amount", value=f"💶 **{amount:,}** Mahocoin", inline=False)
-                    embed.add_field(name="⚠️ Legal Notice", value="This is an IN-GAME transaction only. Real Money Trading (RMT) is **strictly prohibited** and will result in permanent account suspension.", inline=False)
-                    embed.set_footer(text=f"Timestamp: {discord.utils.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')} | Confirm to proceed")
-                    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3143/3143615.png")
+                    wib_time = (discord.utils.utcnow() + timedelta(hours=7)).strftime('%Y-%m-%d %H:%M:%S')
+                    embed.set_footer(text=f"{wib_time} | Confirm to proceed")
                     
                     view = ConfirmationView(message.author, target_user, amount, 'pay', economy_cog)
                     view.message = await message.channel.send(embed=embed, view=view)
@@ -195,4 +218,4 @@ class Transactions(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Transactions(bot))
-    logger.info("✅ Transactions cog loaded")
+    logger.info("✅ Transactions cog loaded (Progressive Tax System)")

@@ -27,7 +27,7 @@ class Cash(commands.Cog):
             balance = economy_cog.get_user_balance(user_id)
             embed = discord.Embed(
                 title="Wallet",
-                description=f"💶 | {message.author.mention}, you currently have **{balance:,}** **Mahocoin!**",
+                description=f"💶 | **{message.author.display_name}**, you currently have **{balance:,}** Mahocoin!",
                 color=discord.Color.gold()
             )
             await message.channel.send(embed=embed)

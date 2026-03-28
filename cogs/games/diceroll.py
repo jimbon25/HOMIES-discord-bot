@@ -92,7 +92,7 @@ class DiceRollGame(commands.Cog):
             current_time = time.time()
             if user_id in self.cooldowns and current_time - self.cooldowns[user_id] < 18:
                 remaining = int(18 - (current_time - self.cooldowns[user_id]))
-                await message.channel.send(f"⏱️ {message.author.mention}, wait **{remaining}s** before next roll!", delete_after=5)
+                await message.channel.send(f"⏱️ **{message.author.display_name}**, wait **{remaining}s** before next roll!", delete_after=5)
                 return
 
             # Start game
@@ -108,7 +108,7 @@ class DiceRollGame(commands.Cog):
 
             # Create initial message
             msg = await message.channel.send(
-                content=f"🎲 | **{message.author.name}** rolled the dice!\n"
+                content=f"🎲 | **{message.author.display_name}** rolled the dice!\n"
                        f"Prediction: **{guess}** | Bet: 💶 **{amount:,}** MC\n"
                        f"Rolling... 🎲"
             )
@@ -119,7 +119,7 @@ class DiceRollGame(commands.Cog):
                 await asyncio.sleep(0.3)
                 d1 = random.randint(1, 6)
                 d2 = random.randint(1, 6)
-                await msg.edit(content=f"🎲 | **{message.author.name}** rolled the dice!\n"
+                await msg.edit(content=f"🎲 | **{message.author.display_name}** rolled the dice!\n"
                                       f"Prediction: **{guess}** | Bet: 💶 **{amount:,}** MC\n"
                                       f"Rolling... [{d1}] [{d2}]")
 

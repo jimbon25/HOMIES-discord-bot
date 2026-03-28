@@ -76,7 +76,7 @@ class SpinWheelGame(commands.Cog):
             current_time = time.time()
             if user_id in self.cooldowns and current_time - self.cooldowns[user_id] < 22:
                 remaining = int(22 - (current_time - self.cooldowns[user_id]))
-                await message.channel.send(f"⏱️ {message.author.mention}, wait **{remaining}s** before next spin!", delete_after=5)
+                await message.channel.send(f"⏱️ **{message.author.display_name}**, wait **{remaining}s** before next spin!", delete_after=5)
                 return
 
             try:
@@ -112,7 +112,7 @@ class SpinWheelGame(commands.Cog):
                 
                 # Create initial message
                 msg = await message.channel.send(
-                    content=f"🎡 | **{message.author.name}** spun the wheel! Bet: 💶 **{amount:,}** Mahocoin\n"
+                    content=f"🎡 | **{message.author.display_name}** spun the wheel! Bet: 💶 **{amount:,}** Mahocoin\n"
                            f"Spinning... 🌀"
                 )
                 
@@ -121,7 +121,7 @@ class SpinWheelGame(commands.Cog):
                 for _ in range(8):
                     await asyncio.sleep(0.4)
                     icon = random.choice(wheel_icons)
-                    await msg.edit(content=f"{icon} | **{message.author.name}** spun the wheel! Bet: 💶 **{amount:,}** Mahocoin\n"
+                    await msg.edit(content=f"{icon} | **{message.author.display_name}** spun the wheel! Bet: 💶 **{amount:,}** Mahocoin\n"
                                           f"Spinning... 🌀")
                 
                 # Show result
@@ -189,7 +189,7 @@ class SpinWheelGame(commands.Cog):
                 
                 embed.add_field(name="Experience", value=f"+**{exp_gain}** EXP{level_msg}", inline=False)
                 
-                await msg.edit(content=f"{emoji_result} | **{message.author.name}** - Spin Complete!", embed=embed)
+                await msg.edit(content=f"{emoji_result} | **{message.author.display_name}** - Spin Complete!", embed=embed)
 
             except ValueError:
                 await message.channel.send(f"⚠️ Invalid amount! Use: `{current_prefix}spin 1000`")

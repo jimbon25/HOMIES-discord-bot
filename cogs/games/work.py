@@ -58,7 +58,7 @@ class Work(commands.Cog):
             user_data = economy_cog.get_user_data(user_id)
             boxes = user_data.get("box_boxes", 0)
             if boxes <= 0:
-                await message.channel.send(f"📦 {message.author.mention}, you have no mystery boxes. Try `{current_prefix}work` for a rare drop!")
+                await message.channel.send(f"📦 **{message.author.display_name}**, you have no mystery boxes. Try `{current_prefix}work` for a rare drop!")
                 return
 
             # Consume one box
@@ -82,12 +82,12 @@ class Work(commands.Cog):
                 prize = random.randint(1500, 3000)
 
             economy_cog.update_balance(user_id, prize)
-            await message.channel.send(f"📦 {message.author.mention}, you opened a mystery box! Rarity: **{rarity}** and got 💶 **{prize:,}** mahocoin!")
+            await message.channel.send(f"📦 **{message.author.display_name}**, you opened a mystery box! Rarity: **{rarity}** and got 💶 **{prize:,}** mahocoin!")
 
         elif content == f"{current_prefix}box":
             user_data = economy_cog.get_user_data(user_id)
             boxes = user_data.get("box_boxes", 0)
-            await message.channel.send(f"📦 {message.author.mention}, you have **{boxes}** mystery box(es). Use `{current_prefix}box open` to open.")
+            await message.channel.send(f"📦 **{message.author.display_name}**, you have **{boxes}** mystery box(es). Use `{current_prefix}box open` to open.")
 
 async def setup(bot):
     await bot.add_cog(Work(bot))
