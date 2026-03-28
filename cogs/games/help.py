@@ -55,9 +55,13 @@ class GamesHelp(commands.Cog):
                 name="Earn Money",
                 value=(
                     f"`{current_prefix}cash` - Check your balance\n"
-                    f"`{current_prefix}daily` - Daily 10k reward (24h cooldown)\n"
+                    f"`{current_prefix}daily` - Daily 10k reward (Reset 15:00 WIB)\n"
                     f"`{current_prefix}work` - Earn 100-1000 (30s cooldown)\n"
-                    f"`{current_prefix}pay @user <amount>` - Send money to user"
+                    f"`{current_prefix}pay @user <amount>` - Send money to user\n"
+                    f"`{current_prefix}crypto` - View crypto market prices\n"
+                    f"`{current_prefix}buy <coin> <amount>` - Buy crypto with MC\n"
+                    f"`{current_prefix}sell <coin> <amount>` - Sell crypto for MC\n"
+                    f"`{current_prefix}pf` - View your crypto portfolio"
                 ),
                 inline=False
             )
