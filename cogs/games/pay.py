@@ -8,15 +8,15 @@ from datetime import datetime, timedelta, timezone
 logger = logging.getLogger(__name__)
 
 def get_tax_rate(amount):
-    """Calculate tax rate based on progressive brackets"""
-    if amount < 100000:
-        return 0.02
-    elif amount < 1000000:
-        return 0.05
-    elif amount < 10000000:
-        return 0.08
+    """Calculate tax rate based on progressive brackets (Clean 3% steps)"""
+    if amount <= 100000:
+        return 0.015 # 1.5%
+    elif amount <= 1000000:
+        return 0.045 # 4.5%
+    elif amount <= 10000000:
+        return 0.075 # 7.5%
     else:
-        return 0.12
+        return 0.105 # 10.5%
 
 class ConfirmationView(discord.ui.View):
     def __init__(self, initiator, target, amount, action_type, economy_cog):
@@ -68,14 +68,18 @@ class ConfirmationView(discord.ui.View):
             tax_amount = int(self.amount * tax_rate)
             received_amount = self.amount - tax_amount
             
-            # Update Balances
+            # Update Balances and Server Tax
             self.economy_cog.update_balance(str(self.initiator.id), -self.amount)
             self.economy_cog.update_balance(str(self.target.id), received_amount)
+            
+            # Save tax to server vault
+            guild_id = str(interaction.guild.id)
+            self.economy_cog.update_server_tax(guild_id, tax_amount)
             
             embed.title = "✅ Transaction Completed"
             embed.description = (
                 f"Successfully transferred to {self.target.mention}\n"
-                f"```💶 {received_amount:,} Mahocoin (Net) | Tax ({int(tax_rate*100)}%)```"
+                f"```💶 {received_amount:,} Mahocoin (Net) | Tax {tax_rate*100:.1f}% ({tax_amount:,})```"
             )
             embed.clear_fields()
             embed.color = discord.Color.green()
@@ -170,7 +174,7 @@ class Transactions(commands.Cog):
                         title="Transaction Confirmation",
                         description=(
                             f"{message.author.mention} will give {target_user.mention}\n"
-                            f"```💶 {amount:,} Mahocoin | Tax ({int(tax_rate*100)}%)```\n"
+                            f"```💶 {amount:,} Mahocoin | Tax {tax_rate*100:.1f}% ({tax_amount:,})```\n"
                             f"⚠️ *Legal Notice: This is an IN-GAME transaction only. Real Money Trading (RMT) is strictly prohibited and will result in permanent account suspension.*"
                         ),
                         color=discord.Color.gold()

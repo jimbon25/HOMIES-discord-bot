@@ -14,9 +14,11 @@ class Economy(commands.Cog):
         self.bot = bot
         self.economy_file = "data/economy.json"
         self.prefix_file = "data/game_prefixes.json"
+        self.tax_file = "data/server_taxes.json"
         self.ensure_files()
         self.economy = self.load_data(self.economy_file)
         self.prefixes = self.load_data(self.prefix_file)
+        self.taxes = self.load_data(self.tax_file)
         # Default starting balance
         self.starting_balance = 5000 
 
@@ -27,6 +29,8 @@ class Economy(commands.Cog):
             safe_save_json({}, self.economy_file)
         if not os.path.exists(self.prefix_file):
             safe_save_json({}, self.prefix_file)
+        if not os.path.exists(self.tax_file):
+            safe_save_json({}, self.tax_file)
 
     def load_data(self, file_path):
         """Load data from JSON file"""
@@ -44,6 +48,20 @@ class Economy(commands.Cog):
     def save_prefixes(self):
         """Save prefixes data to JSON"""
         safe_save_json(self.prefixes, self.prefix_file)
+
+    def save_taxes(self):
+        """Save tax data to JSON"""
+        safe_save_json(self.taxes, self.tax_file)
+
+    def get_server_tax(self, guild_id: str) -> int:
+        """Get total collected tax for a server"""
+        return self.taxes.get(guild_id, 0)
+
+    def update_server_tax(self, guild_id: str, amount: int):
+        """Add amount to server tax pool"""
+        current_tax = self.get_server_tax(guild_id)
+        self.taxes[guild_id] = current_tax + amount
+        self.save_taxes()
 
     def get_user_data(self, user_id: str) -> dict:
         """Get full user data, initialize if not exists"""
@@ -95,6 +113,22 @@ class Economy(commands.Cog):
                 current_prefix = self.get_guild_prefix(guild_id)
                 await message.channel.send(f"Current prefix is: `{current_prefix}`. Use `mahoraga prefix <char>` to change it.")
                 return
+
+        # Handle "<prefix>tax" command
+        current_prefix = self.get_guild_prefix(guild_id)
+        if content == f"{current_prefix}tax":
+            # Check if user is administrator
+            if not message.author.guild_permissions.administrator:
+                return
+
+            total_tax = self.get_server_tax(guild_id)
+            embed = discord.Embed(
+                title="🏛️ Server Tax Vault",
+                description=f"Total collected Mahocoin from transactions:\n```💶 {total_tax:,} MC```",
+                color=discord.Color.dark_gold()
+            )
+            embed.set_footer(text=f"Server ID: {guild_id}")
+            await message.channel.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Economy(bot))
