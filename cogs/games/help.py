@@ -39,6 +39,7 @@ class GamesHelp(commands.Cog):
                     f"`{current_prefix}bj <amount>` - Blackjack (hit/stand vs dealer)\n"
                     f"`{current_prefix}spin <amount>` - Spin the wheel (0.0x-10x multiplier, HIGH RISK)\n"
                     f"`{current_prefix}dice <2-12> <amount>` - Dice roll (guess sum of 2 dice)\n"
+                    f"`{current_prefix}rps <amount>` - Rock Paper Scissors (vs Bot)\n"
                     f"`{current_prefix}work` - Work for 100-1000 cash (chance for rare mystery box)\n"
                     f"`{current_prefix}box` - See your mystery box stock\n"
                     f"`{current_prefix}box open` - Open a mystery box (if you have one)\n"

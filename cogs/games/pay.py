@@ -169,7 +169,7 @@ class Transactions(commands.Cog):
                     embed = discord.Embed(
                         title="Transaction Confirmation",
                         description=(
-                            f"{message.author.mention} will give {target_user.mention}\n\n"
+                            f"{message.author.mention} will give {target_user.mention}\n"
                             f"```💶 {amount:,} Mahocoin | Tax ({int(tax_rate*100)}%)```\n"
                             f"⚠️ *Legal Notice: This is an IN-GAME transaction only. Real Money Trading (RMT) is strictly prohibited and will result in permanent account suspension.*"
                         ),
