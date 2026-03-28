@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def calculate_multiplier(bombs, gems, total_tiles=20):
-    """Calculate mines multiplier based on probability theory with 2% House Edge"""
+    """Calculate mines multiplier based on probability theory with 5% House Edge"""
     if gems <= 0:
         return 1.0
     if gems > (total_tiles - bombs):
@@ -38,7 +38,7 @@ def calculate_multiplier(bombs, gems, total_tiles=20):
             return 0.0
             
         prob = safe_combos / total_combos
-        multiplier = 0.98 / prob # 2% House Edge
+        multiplier = 0.85 / prob # 15% House Edge (Significantly nerfed for long-term economy balance)
         return round(multiplier, 2)
     except (ZeroDivisionError, ValueError):
         return 0.0
@@ -143,7 +143,7 @@ class MinesView(discord.ui.View):
         desc = (
             f"👤 **Player:** {self.author.mention}\n"
             f"💶 **Bet:** `{self.amount:,} Mahocoin`\n"
-            f"💣 **Bombs:** `{self.bombs_count}`\n\n"
+            f"💣 **Bombs:** `{self.bombs_count}`\n"
             f"```💎 Gems: {self.gems_found}\n"
             f"📈 Mult: {current_mult}x\n"
             f"💰 Profit: +{profit:,} MC```"
@@ -268,8 +268,8 @@ class Mines(commands.Cog):
                 await message.channel.send(f"❌ Insufficient balance! ({balance:,})")
                 return
 
-            # Randomize Bombs (Mystery Mode: 2 - 10 bombs)
-            bombs = random.randint(2, 10)
+            # Randomize Bombs (Balanced Range: 2 - 15 bombs)
+            bombs = random.randint(2, 15)
 
             # Execute
             economy_cog.update_balance(user_id, -amount)
