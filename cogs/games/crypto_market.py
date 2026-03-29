@@ -22,16 +22,31 @@ class CryptoMarket(commands.Cog):
         self.coins = {
             "maho": {"name": "$MAHO", "volatility": 0.05, "base_price": 50000, "emoji": "🔵"},
             "zen": {"name": "$ZEN", "volatility": 0.15, "base_price": 10000, "emoji": "🟣"},
-            "curse": {"name": "$CURSE", "volatility": 0.40, "base_price": 1000, "emoji": "💀"}
+            "curse": {"name": "$CURSE", "volatility": 0.40, "base_price": 1000, "emoji": "💀"},
+            "sukuna": {"name": "$SUKUNA", "volatility": 0.30, "base_price": 15000, "emoji": "👺"},
+            "gojo": {"name": "$GOJO", "volatility": 0.08, "base_price": 100000, "emoji": "🕶️"},
+            "finger": {"name": "$FINGER", "volatility": 0.50, "base_price": 500, "emoji": "🤙"}
         }
         
         self.ensure_files()
         self.market_data = self.load_data(self.market_file)
         self.user_data = self.load_data(self.user_crypto_file)
         
-        # Initialize market if empty
+        # Initialize market if empty or add missing coins
         if not self.market_data:
             self.init_market()
+        else:
+            changed = False
+            if "prices" not in self.market_data: self.market_data["prices"] = {}
+            if "history" not in self.market_data: self.market_data["history"] = {}
+            
+            for k, v in self.coins.items():
+                if k not in self.market_data["prices"]:
+                    self.market_data["prices"][k] = v["base_price"]
+                    self.market_data["history"][k] = [v["base_price"]]
+                    changed = True
+            if changed:
+                safe_save_json(self.market_data, self.market_file)
             
         self.update_market.start()
 
@@ -81,7 +96,9 @@ class CryptoMarket(commands.Cog):
                 ("FUD! $CURSE is being investigated.", "curse", -0.30),
                 ("Global adoption! All coins moon.", "all", 0.10),
                 ("Exchange hack! All coins crash.", "all", -0.20),
-                ("Tech update! $ZEN price surges.", "zen", 0.20)
+                ("Tech update! $ZEN price surges.", "zen", 0.20),
+                ("King of Curses manifests! $SUKUNA surges.", "sukuna", 0.35),
+                ("The Six Eyes revealed! $GOJO skyrockets.", "gojo", 0.25)
             ]
             msg, target, impact = random.choice(events)
             self.market_data["news"] = msg
@@ -93,7 +110,7 @@ class CryptoMarket(commands.Cog):
         # Calculate New Prices
         sentiment = self.market_data["sentiment"]
         for key, coin in self.coins.items():
-            current_price = self.market_data["prices"][key]
+            current_price = self.market_data["prices"].get(key, coin["base_price"])
             
             # Base volatility
             vol = coin["volatility"]
@@ -105,7 +122,7 @@ class CryptoMarket(commands.Cog):
             elif sentiment == "volatile": change *= 2
             
             # Apply News Impact
-            change += event_impact[key]
+            change += event_impact.get(key, 0)
             
             new_price = int(current_price * (1 + change))
             if new_price < 10: new_price = 10 # Minimum price
@@ -131,6 +148,15 @@ class CryptoMarket(commands.Cog):
         if user_id not in self.user_data:
             self.user_data[user_id] = {k: {"amount": 0.0, "avg_price": 0} for k in self.coins}
             safe_save_json(self.user_data, self.user_crypto_file)
+        else:
+            # Ensure new coins exist for existing user
+            changed = False
+            for k in self.coins:
+                if k not in self.user_data[user_id]:
+                    self.user_data[user_id][k] = {"amount": 0.0, "avg_price": 0}
+                    changed = True
+            if changed:
+                safe_save_json(self.user_data, self.user_crypto_file)
         return self.user_data[user_id]
 
     def save_user_data(self):
@@ -207,12 +233,14 @@ class CryptoMarket(commands.Cog):
         elif content.startswith(f"{current_prefix}buy "):
             parts = content.split()
             if len(parts) < 3:
-                await message.channel.send(f"⚠️ Usage: `{current_prefix}buy <maho/zen/curse> <amount_in_mc/all>`")
+                coin_list = ", ".join(self.coins.keys())
+                await message.channel.send(f"⚠️ Usage: `{current_prefix}buy <coin> <amount_in_mc/all>`\nAvailable coins: `{coin_list}`")
                 return
             
             coin_key = parts[1]
             if coin_key not in self.coins:
-                await message.channel.send("❌ Invalid coin! Choose: `maho`, `zen`, or `curse`.")
+                coin_list = ", ".join(self.coins.keys())
+                await message.channel.send(f"❌ Invalid coin! Choose: `{coin_list}`.")
                 return
             
             balance = economy_cog.get_user_balance(user_id)
@@ -263,12 +291,14 @@ class CryptoMarket(commands.Cog):
         elif content.startswith(f"{current_prefix}sell "):
             parts = content.split()
             if len(parts) < 3:
-                await message.channel.send(f"⚠️ Usage: `{current_prefix}sell <maho/zen/curse> <amount_of_coin/all>`")
+                coin_list = ", ".join(self.coins.keys())
+                await message.channel.send(f"⚠️ Usage: `{current_prefix}sell <coin> <amount_of_coin/all>`\nAvailable coins: `{coin_list}`")
                 return
             
             coin_key = parts[1]
             if coin_key not in self.coins:
-                await message.channel.send("❌ Invalid coin!")
+                coin_list = ", ".join(self.coins.keys())
+                await message.channel.send(f"❌ Invalid coin! Choose: `{coin_list}`.")
                 return
             
             crypto = self.get_user_crypto(user_id)

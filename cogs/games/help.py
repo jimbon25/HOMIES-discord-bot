@@ -61,7 +61,10 @@ class GamesHelp(commands.Cog):
                     f"`{current_prefix}crypto` - View crypto market prices\n"
                     f"`{current_prefix}buy <coin> <amount>` - Buy crypto with MC\n"
                     f"`{current_prefix}sell <coin> <amount>` - Sell crypto for MC\n"
-                    f"`{current_prefix}pf` - View your crypto portfolio"
+                    f"`{current_prefix}pf` - View your crypto portfolio\n"
+                    f"`{current_prefix}bank` - View your bank balance & deposits\n"
+                    f"`{current_prefix}dep <amount> [plan_id]` - Deposit money (Plan 1-3)\n"
+                    f"`{current_prefix}wit <amount> [index]` - Withdraw money from bank"
                 ),
                 inline=False
             )
